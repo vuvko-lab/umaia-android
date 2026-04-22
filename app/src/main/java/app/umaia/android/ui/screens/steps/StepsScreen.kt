@@ -217,7 +217,7 @@ internal fun StepsContent(state: StepsUiState) {
         StepCalendar(stepHistory = state.stepHistory, todaySteps = state.dailySteps, totalSteps = state.totalSteps)
 
         // Share calendar
-        ShareCalendarButton()
+        ShareCalendarButton(stepHistory = state.stepHistory)
 
         // Nur conversion grid
         NurConversionGrid(currentSteps = state.dailySteps)
@@ -593,12 +593,11 @@ private fun ShareStepsButton(steps: Int, nur: Int) {
     val s = LocalStrings.current
     OutlinedButton(
         onClick = {
-            val text = s.shareStepsText(steps, nur)
-            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(android.content.Intent.EXTRA_TEXT, text)
-            }
-            context.startActivity(android.content.Intent.createChooser(intent, s.shareSteps))
+            val bitmap = StepShareUtils.createTodayStepsImage(steps, nur)
+            val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            val fileName = "umaia_steps_${dateFormat.format(java.util.Date())}.png"
+            StepShareUtils.saveBitmapAndShare(context, bitmap, fileName)
+            bitmap.recycle()
         },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -612,16 +611,17 @@ private fun ShareStepsButton(steps: Int, nur: Int) {
 }
 
 @Composable
-private fun ShareCalendarButton() {
+private fun ShareCalendarButton(stepHistory: Map<String, Int>) {
     val context = LocalContext.current
     val s = LocalStrings.current
     OutlinedButton(
         onClick = {
-            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(android.content.Intent.EXTRA_TEXT, s.shareCalendarText)
-            }
-            context.startActivity(android.content.Intent.createChooser(intent, s.shareCalendar))
+            val calendar = java.util.Calendar.getInstance()
+            val bitmap = StepShareUtils.createCalendarImage(stepHistory, calendar)
+            val dateFormat = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.US)
+            val fileName = "umaia_calendar_${dateFormat.format(java.util.Date())}.png"
+            StepShareUtils.saveBitmapAndShare(context, bitmap, fileName)
+            bitmap.recycle()
         },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
