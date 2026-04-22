@@ -27,6 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import app.umaia.android.R
 import app.umaia.android.domain.model.*
 import app.umaia.android.ui.components.BuildingPanel
+import app.umaia.android.ui.components.BuildingsPanelWithTabs
 import app.umaia.android.ui.components.ResourceBar
 import app.umaia.android.ui.components.VillageScene
 import app.umaia.android.ui.strings.LocalStrings
@@ -89,6 +90,20 @@ fun DashboardScreen(
             )
         }
 
+        // First-time welcome dialog
+        if (dashState.showWelcome) {
+            WelcomeDialog { dashboardViewModel.dismissWelcome() }
+        }
+
+        // Return-after-gap welcome dialog
+        if (dashState.showReturnWelcome) {
+            ReturnWelcomeDialog(
+                daysAway = dashState.daysAway,
+                nurBonus = dashState.returnNurBonus,
+                onDismiss = { dashboardViewModel.dismissReturnWelcome() }
+            )
+        }
+
         // Welcome-back overlay
         if (dashState.welcomeBack) {
             WelcomeBackDialog { dashboardViewModel.dismissWelcomeBack() }
@@ -115,6 +130,15 @@ fun DashboardScreen(
                 TextButton(onClick = { showDecayDialog = false }) { Text(s.ok, color = Gold) }
             },
             containerColor = TC.card
+        )
+    }
+
+    if (session.showSessionComplete && dashState.profile != null) {
+        SessionCompleteDialog(
+            questsCompleted = gameState.completedQuests.size,
+            buildingsBuilt = gameState.buildings.size,
+            populationCount = gameState.population,
+            onDismiss = { gameViewModel.dismissSessionComplete() }
         )
     }
 }
@@ -146,6 +170,95 @@ private fun PopulationToast(grew: Boolean, count: Int) {
     }
 }
 
+// ── Welcome Dialog ────────────────────────────────────────────────────────────
+
+@Composable
+private fun WelcomeDialog(onDismiss: () -> Unit) {
+    val s = LocalStrings.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Welcome to UMAIA", color = Gold, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                listOf(
+                    "👣 " to "Walk to earn Nur",
+                    "🏕️ " to "Build structures for your tribe",
+                    "🔮 " to "Consult the Oracle to discover your role",
+                    "🌿 " to "Learn the wisdom of the steppe"
+                ).forEach { (emoji, text) ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(emoji, fontSize = 16.sp)
+                        Spacer(Modifier.width(8.dp))
+                        Text(text, color = TC.muted, fontSize = 13.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = Gold)
+            ) { Text(s.letsGo, color = NightBlue, fontWeight = FontWeight.Bold) }
+        },
+        containerColor = TC.card
+    )
+}
+
+// ── Return Welcome Dialog ──────────────────────────────────────────────────────
+
+@Composable
+private fun ReturnWelcomeDialog(daysAway: Int, nurBonus: Int, onDismiss: () -> Unit) {
+    val s = LocalStrings.current
+    val emoji = when {
+        daysAway == 1 -> "👋"
+        daysAway in 2..3 -> "🏕️"
+        daysAway in 4..7 -> "🐎"
+        else -> "🌅"
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Welcome back!", color = Gold, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(emoji, fontSize = 32.sp)
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        "You've been away for $daysAway day" + if (daysAway != 1) "s" else "",
+                        color = TC.muted, fontSize = 14.sp
+                    )
+                }
+                if (nurBonus > 0) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Gold.copy(alpha = 0.15f)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("🎁", fontSize = 16.sp)
+                            Spacer(Modifier.width(8.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("Returning bonus", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("$nurBonus Nur", color = TC.muted, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = Gold)
+            ) { Text(s.letsGo, color = NightBlue, fontWeight = FontWeight.Bold) }
+        },
+        containerColor = TC.card
+    )
+}
+
 // ── Welcome Back Dialog ───────────────────────────────────────────────────────
 
 @Composable
@@ -160,6 +273,53 @@ private fun WelcomeBackDialog(onDismiss: () -> Unit) {
                 onClick = onDismiss,
                 colors = ButtonDefaults.buttonColors(containerColor = Gold)
             ) { Text(s.letsGo, color = NightBlue, fontWeight = FontWeight.Bold) }
+        },
+        containerColor = TC.card
+    )
+}
+
+// ── Session Complete Dialog ───────────────────────────────────────────────────
+
+@Composable
+private fun SessionCompleteDialog(
+    questsCompleted: Int,
+    buildingsBuilt: Int,
+    populationCount: Int,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Session Complete", color = Gold, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                listOf(
+                    Triple("🎯", "Quests Completed", "$questsCompleted"),
+                    Triple("🏗️", "Buildings Built", "$buildingsBuilt"),
+                    Triple("👥", "Population", "$populationCount")
+                ).forEach { (emoji, label, value) ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(TC.cardAlt, RoundedCornerShape(8.dp))
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(emoji, fontSize = 16.sp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(label, color = TC.text, fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                        }
+                        Text(value, color = Gold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(containerColor = Gold)
+            ) { Text("Close", color = NightBlue, fontWeight = FontWeight.Bold) }
         },
         containerColor = TC.card
     )
@@ -263,8 +423,13 @@ internal fun DashboardContent(
             }
         }
 
-        // Buildings
-        BuildingsSection(state = gameState, onBuild = onBuild, onAssignWorker = onAssignWorker)
+        // Buildings with tabs
+        BuildingsPanelWithTabs(
+            state = gameState,
+            onBuild = onBuild,
+            onAssignWorker = onAssignWorker,
+            onNavigateToOracle = onNavigateToOracle
+        )
 
         // Rewards
         RewardsCard(state = gameState)
@@ -455,45 +620,6 @@ private fun SpiritFactorRow(label: String, met: Boolean, bonus: String, hint: St
     }
 }
 
-// ── Buildings Section ─────────────────────────────────────────────────────────
-
-@Composable
-private fun BuildingsSection(
-    state: GameState,
-    onBuild: (BuildingId) -> Unit,
-    onAssignWorker: (String, Int) -> Unit
-) {
-    val unlockedTier = maxUnlockedTier(state.buildings)
-    val grouped = state.buildings.groupBy { it.type }
-
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        BuildingId.entries.filter { buildingDef(it).tier <= unlockedTier }.forEach { type ->
-            val def = buildingDef(type)
-            val group = BuildingGroup(
-                type = type,
-                count = grouped[type]?.size ?: 0,
-                totalWorkers = grouped[type]?.sumOf { it.workers } ?: 0,
-                maxWorkers = (grouped[type]?.size ?: 0) * def.maxWorkers
-            )
-            BuildingPanel(
-                def = def,
-                group = group,
-                resources = state.resources,
-                onBuild = { onBuild(type) },
-                onAssign = { delta ->
-                    val instance = if (delta > 0) {
-                        // Find first instance that can accept another worker
-                        state.buildings.firstOrNull { it.type == type && it.workers < def.maxWorkers }
-                    } else {
-                        // Find first instance that has workers to remove
-                        state.buildings.firstOrNull { it.type == type && it.workers > 0 }
-                    }
-                    if (instance != null) onAssignWorker(instance.instanceId, delta)
-                }
-            )
-        }
-    }
-}
 
 // ── Rewards Card ─────────────────────────────────────────────────────────────
 

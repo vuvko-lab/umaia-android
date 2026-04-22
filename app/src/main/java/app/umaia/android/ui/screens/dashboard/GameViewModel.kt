@@ -14,7 +14,8 @@ import javax.inject.Inject
 data class SessionInfo(
     val minutes: Int = 0,
     val isWarning: Boolean = false,
-    val isDecaying: Boolean = false
+    val isDecaying: Boolean = false,
+    val showSessionComplete: Boolean = false
 )
 
 sealed class PopulationEvent {
@@ -92,10 +93,17 @@ class GameViewModel @Inject constructor(
     }
 
     fun stop() {
+        if (_session.value.isDecaying) {
+            _session.value = _session.value.copy(showSessionComplete = true)
+        }
         tickJob?.cancel()
         tickJob = null
         sessionJob?.cancel()
         sessionJob = null
+    }
+
+    fun dismissSessionComplete() {
+        _session.value = _session.value.copy(showSessionComplete = false)
     }
 
     fun clearPopulationEvent() {

@@ -15,7 +15,11 @@ import javax.inject.Inject
 data class DashboardUiState(
     val profile: UserProfile? = null,
     val dailySteps: Int = 0,
-    val welcomeBack: Boolean = false
+    val welcomeBack: Boolean = false,
+    val showWelcome: Boolean = false,
+    val showReturnWelcome: Boolean = false,
+    val daysAway: Int = 0,
+    val returnNurBonus: Int = 0
 )
 
 @HiltViewModel
@@ -37,14 +41,25 @@ class DashboardViewModel @Inject constructor(
                 val profile = profileRepository.getProfile()
                 val nurEarned = loginRepository.recordDailyLogin()
 
-                val lastVisit = gamePrefs.lastVisitDate
-                val today = java.time.LocalDate.now().toString()
-                val isReturn = lastVisit != null && lastVisit != today
-                gamePrefs.lastVisitDate = today
+                val uid = profile.userId
+                val isFirstVisit = !gamePrefs.isWelcomeShown(uid)
+                val daysAway = gamePrefs.daysSinceLastVisit()
+                val isReturnAfterGap = daysAway >= 1
+
+                if (isFirstVisit) {
+                    gamePrefs.markWelcomeShown(uid)
+                }
+                gamePrefs.recordVisit()
+
+                val returnBonus = if (isReturnAfterGap) minOf(daysAway * 5, 50) else 0
 
                 _uiState.value = DashboardUiState(
                     profile = profile,
-                    welcomeBack = isReturn && nurEarned > 0
+                    welcomeBack = false,
+                    showWelcome = isFirstVisit,
+                    showReturnWelcome = isReturnAfterGap && !isFirstVisit,
+                    daysAway = daysAway,
+                    returnNurBonus = returnBonus
                 )
             }
         }
@@ -56,5 +71,13 @@ class DashboardViewModel @Inject constructor(
 
     fun dismissWelcomeBack() {
         _uiState.update { it.copy(welcomeBack = false) }
+    }
+
+    fun dismissWelcome() {
+        _uiState.update { it.copy(showWelcome = false) }
+    }
+
+    fun dismissReturnWelcome() {
+        _uiState.update { it.copy(showReturnWelcome = false) }
     }
 }

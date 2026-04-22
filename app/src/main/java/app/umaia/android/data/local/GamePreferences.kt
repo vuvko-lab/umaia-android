@@ -33,6 +33,10 @@ class GamePreferences @Inject constructor(@ApplicationContext ctx: Context) {
         get() = prefs.getString("umaia_last_visit_date", null)
         set(v) { prefs.edit().putString("umaia_last_visit_date", v).apply() }
 
+    var registrationDate: String?
+        get() = prefs.getString("umaia_registration_date", null)
+        set(v) { prefs.edit().putString("umaia_registration_date", v).apply() }
+
     var onboardingDone: Boolean
         get() = prefs.getBoolean("umaia_onboarding_done", false)
         set(v) { prefs.edit().putBoolean("umaia_onboarding_done", v).apply() }
@@ -64,23 +68,31 @@ class GamePreferences @Inject constructor(@ApplicationContext ctx: Context) {
             .apply()
     }
 
-    // ── Weekly / Monthly step aggregates ─────────────────────────────────────
+    // ── Weekly / Monthly step aggregates (registration-anchored) ─────────────
 
-    val currentWeekStart: java.util.Date get() {
-        val cal = java.util.Calendar.getInstance()
-        cal.firstDayOfWeek = java.util.Calendar.MONDAY
-        cal.set(java.util.Calendar.DAY_OF_WEEK, java.util.Calendar.MONDAY)
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 0); cal.set(java.util.Calendar.MINUTE, 0)
-        cal.set(java.util.Calendar.SECOND, 0); cal.set(java.util.Calendar.MILLISECOND, 0)
-        return cal.time
+    private fun getOrCreateRegistrationDate(): java.time.LocalDate {
+        if (registrationDate != null) {
+            return java.time.LocalDate.parse(registrationDate!!)
+        }
+        val today = java.time.LocalDate.now()
+        registrationDate = today.toString()
+        return today
     }
 
-    val currentMonthStart: java.util.Date get() {
-        val cal = java.util.Calendar.getInstance()
-        cal.set(java.util.Calendar.DAY_OF_MONTH, 1)
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 0); cal.set(java.util.Calendar.MINUTE, 0)
-        cal.set(java.util.Calendar.SECOND, 0); cal.set(java.util.Calendar.MILLISECOND, 0)
-        return cal.time
+    val currentWeekStart: java.time.LocalDate get() {
+        val regDate = getOrCreateRegistrationDate()
+        val today = java.time.LocalDate.now()
+        val daysSinceReg = java.time.temporal.ChronoUnit.DAYS.between(regDate, today).toInt()
+        val weekIndex = daysSinceReg / 7
+        return regDate.plusDays((weekIndex * 7).toLong())
+    }
+
+    val currentMonthStart: java.time.LocalDate get() {
+        val regDate = getOrCreateRegistrationDate()
+        val today = java.time.LocalDate.now()
+        val daysSinceReg = java.time.temporal.ChronoUnit.DAYS.between(regDate, today).toInt()
+        val monthIndex = daysSinceReg / 30
+        return regDate.plusDays((monthIndex * 30).toLong())
     }
 
     fun weeklySteps(includingDaily: Int): Int {
@@ -90,8 +102,8 @@ class GamePreferences @Inject constructor(@ApplicationContext ctx: Context) {
         history[today] = includingDaily
         val weekStart = currentWeekStart
         return history.entries.sumOf { (dateStr, steps) ->
-            val date = runCatching { fmt.parse(dateStr) }.getOrNull() ?: return@sumOf 0
-            if (!date.before(weekStart)) steps else 0
+            val date = runCatching { java.time.LocalDate.parse(dateStr) }.getOrNull() ?: return@sumOf 0
+            if (!date.isBefore(weekStart)) steps else 0
         }
     }
 
@@ -102,8 +114,8 @@ class GamePreferences @Inject constructor(@ApplicationContext ctx: Context) {
         history[today] = includingDaily
         val monthStart = currentMonthStart
         return history.entries.sumOf { (dateStr, steps) ->
-            val date = runCatching { fmt.parse(dateStr) }.getOrNull() ?: return@sumOf 0
-            if (!date.before(monthStart)) steps else 0
+            val date = runCatching { java.time.LocalDate.parse(dateStr) }.getOrNull() ?: return@sumOf 0
+            if (!date.isBefore(monthStart)) steps else 0
         }
     }
 
@@ -128,5 +140,33 @@ class GamePreferences @Inject constructor(@ApplicationContext ctx: Context) {
             .putString("reward_period_$id", period)
             .putLong("reward_claimed_at_$id", System.currentTimeMillis())
             .apply()
+    }
+
+    // ── Welcome dialogs ──────────────────────────────────────────────────────
+
+    fun isWelcomeShown(uid: String): Boolean {
+        return welcomeShownUid == uid
+    }
+
+    fun markWelcomeShown(uid: String) {
+        welcomeShownUid = uid
+    }
+
+    fun recordVisit() {
+        lastVisitDate = java.time.LocalDate.now().toString()
+        if (registrationDate == null) {
+            registrationDate = java.time.LocalDate.now().toString()
+        }
+    }
+
+    fun daysSinceLastVisit(): Int {
+        val lastVisit = lastVisitDate ?: return 0
+        return try {
+            val last = java.time.LocalDate.parse(lastVisit)
+            val today = java.time.LocalDate.now()
+            java.time.temporal.ChronoUnit.DAYS.between(last, today).toInt()
+        } catch (e: Exception) {
+            0
+        }
     }
 }

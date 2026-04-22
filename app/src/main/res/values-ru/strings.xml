@@ -19,16 +19,17 @@
 
     <string name="onboarding_next">Далее</string>
     <string name="onboarding_get_started">Начать</string>
+    <string name="onboarding_skip">Пропустить</string>
     <string name="onboarding_title_1">Добро пожаловать в Умайю</string>
-    <string name="onboarding_body_1">Твой путь к здоровью начинается с племени.</string>
-    <string name="onboarding_title_2">Строй деревню</string>
-    <string name="onboarding_body_2">Возводи постройки, назначай рабочих, расти население.</string>
-    <string name="onboarding_title_3">Считай шаги</string>
-    <string name="onboarding_body_3">Ходи, чтобы зарабатывать энергию Нур для племени.</string>
-    <string name="onboarding_title_4">Мудрость еды</string>
-    <string name="onboarding_body_4">Шесть категорий питания для здоровых привычек.</string>
-    <string name="onboarding_title_5">Провидец</string>
-    <string name="onboarding_body_5">Пройди оценку здоровья, чтобы узнать свою роль в племени.</string>
+    <string name="onboarding_body_1">На залитых солнцем степях, простирающихся до горизонта, кипит жизнь.</string>
+    <string name="onboarding_title_2">Дух Степи</string>
+    <string name="onboarding_body_2">Здесь живёт кочевое племя, оберегаемое УМАЙЯ — духом благополучия.</string>
+    <string name="onboarding_title_3">Твои шаги важны</string>
+    <string name="onboarding_body_3">Твои шаги наполняют мир светом и помогают кочевникам идти дальше.</string>
+    <string name="onboarding_title_4">Дом кочевника</string>
+    <string name="onboarding_body_4">Юрта стоит крепко против ветра — укрытие, построенное руками, которые не знают покоя.</string>
+    <string name="onboarding_title_5">Раскрой свою судьбу</string>
+    <string name="onboarding_body_5">Провидец читает твоё тело и раскрывает твою силу. Твоё здоровье определяет судьбу племени. Ходи, строй, расти и открой своё предназначение.</string>
 
     <string name="resource_food">Еда</string>
     <string name="resource_water">Вода</string>

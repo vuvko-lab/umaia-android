@@ -76,6 +76,9 @@ data class AppStrings(
     val rewardClaimed: String,
     val rewardInstruction: (String, String) -> String,
     val claim: String,
+    val assignWorkers: String,
+    val howGameWorks: String,
+    val yourQuest: String,
 
     // ── Steps ─────────────────────────────────────────────────────────────────
     val stepsTitle: String,
@@ -251,6 +254,9 @@ val EnStrings = AppStrings(
     rewardClaimed = "Reward Claimed!",
     rewardInstruction = { partner, desc -> "Show this screen at $partner to redeem your $desc." },
     claim = "Claim",
+    assignWorkers = "Assign Workers",
+    howGameWorks = "How the Game Works",
+    yourQuest = "Your Quest",
 
     stepsTitle = "Steps",
     ranking = "Ranking",
@@ -427,6 +433,9 @@ val RuStrings = AppStrings(
     rewardClaimed = "Награда получена!",
     rewardInstruction = { partner, desc -> "Покажите этот экран в $partner, чтобы получить $desc." },
     claim = "Получить",
+    assignWorkers = "Назначить рабочих",
+    howGameWorks = "Как работает игра",
+    yourQuest = "Ваше задание",
 
     stepsTitle = "Шаги",
     ranking = "Рейтинг",
@@ -603,6 +612,9 @@ val KkStrings = AppStrings(
     rewardClaimed = "Марапат алынды!",
     rewardInstruction = { partner, desc -> "$desc алу үшін бұл экранды $partner дүкенінде көрсетіңіз." },
     claim = "Алу",
+    assignWorkers = "Işçileri тағайындау",
+    howGameWorks = "Ойын қалай жұмыс істейді",
+    yourQuest = "Сіздің тапсырмаңыз",
 
     stepsTitle = "Қадамдар",
     ranking = "Рейтинг",
