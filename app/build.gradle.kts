@@ -18,8 +18,8 @@ android {
         applicationId = "app.umaia.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = (findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
+        versionName = (findProperty("versionName") as String?) ?: "1.0"
 
         val localPropsFile = rootProject.file("local.properties")
         val props = Properties()
