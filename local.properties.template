@@ -1,0 +1,11 @@
+sdk.dir=/path/to/android/sdk
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=eyJ...
+GOOGLE_WEB_CLIENT_ID=12345-xxx.apps.googleusercontent.com
+POSTHOG_API_KEY=phc_xxx
+
+# Release signing (required for assembleRelease / bundleRelease)
+KEYSTORE_PATH=/absolute/path/to/umaia-release.jks
+KEYSTORE_PASSWORD=your_store_password
+KEY_ALIAS=umaia
+KEY_PASSWORD=your_key_password

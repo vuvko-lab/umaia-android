@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Umaia</string>
+
+    <!-- Tabs -->
+    <string name="tab_tasks">Tasks</string>
+    <string name="tab_steps">Steps</string>
+    <string name="tab_food">Food</string>
+    <string name="tab_seer">Seer</string>
+    <string name="tab_profile">UMAIA</string>
+
+    <!-- Auth -->
+    <string name="sign_in">Sign In</string>
+    <string name="sign_up">Sign Up</string>
+    <string name="sign_out">Sign Out</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="email_hint">Email</string>
+    <string name="password_hint">Password</string>
+    <string name="loading">Loading…</string>
+    <string name="email_confirmation_sent">Check your email to confirm your account.</string>
+    <string name="login_tagline">Turn your steps to build a new World of Nomads</string>
+    <string name="or">or</string>
+    <string name="continue_with_google">Continue with Google</string>
+    <string name="already_have_account">Already have an account? Sign in</string>
+    <string name="no_account">Don\'t have an account? Sign up</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_get_started">Begin</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_title_1">Welcome to UMAIA</string>
+    <string name="onboarding_body_1">On the sun-drenched steppes stretching to the horizon, life thrives.</string>
+    <string name="onboarding_title_2">The Spirit of the Steppe</string>
+    <string name="onboarding_body_2">A nomadic tribe lives here, watched over by UMAIA — the spirit of well-being.</string>
+    <string name="onboarding_title_3">Your Steps Matter</string>
+    <string name="onboarding_body_3">Your steps fill the world with light and help the nomads keep going.</string>
+    <string name="onboarding_title_4">The Nomad\'s Home</string>
+    <string name="onboarding_body_4">The yurt stands strong against the wind — a shelter built by hands that never rest.</string>
+    <string name="onboarding_title_5">Discover Your Destiny</string>
+    <string name="onboarding_body_5">The Seer reads your body and reveals your strength. Your health determines the fate of the tribe. Walk, build, grow, and discover your purpose.</string>
+
+    <!-- Resources -->
+    <string name="resource_food">Food</string>
+    <string name="resource_water">Water</string>
+    <string name="resource_fuel">Fuel</string>
+    <string name="resource_felt">Felt</string>
+    <string name="resource_leather">Leather</string>
+    <string name="resource_wood">Wood</string>
+    <string name="resource_kumis">Kumis</string>
+    <string name="resource_crafts">Crafts</string>
+    <string name="resource_songs">Songs</string>
+
+    <!-- Buildings -->
+    <string name="building_pasture">Pasture</string>
+    <string name="building_well">Well</string>
+    <string name="building_hearth">Hearth</string>
+    <string name="building_loom">Loom</string>
+    <string name="building_tannery">Tannery</string>
+    <string name="building_woodcamp">Woodcamp</string>
+    <string name="building_brewery">Brewery</string>
+    <string name="building_workshop">Workshop</string>
+    <string name="building_circle">Circle of Stories</string>
+    <string name="building_yurt">New Yurt</string>
+
+    <!-- Dashboard -->
+    <string name="population">Population</string>
+    <string name="spirit">Spirit</string>
+    <string name="day">Day %d</string>
+    <string name="nur">Nur</string>
+    <string name="workers">Workers</string>
+    <string name="build">Build</string>
+    <string name="assign_worker">+Worker</string>
+    <string name="remove_worker">-Worker</string>
+    <string name="quest">Quest</string>
+
+    <!-- Steps -->
+    <string name="daily_steps">Daily Steps</string>
+    <string name="total_steps">Total Steps</string>
+    <string name="request_permission">Enable Step Tracking</string>
+    <string name="steps_permission_rationale">Step tracking lets you earn Nur energy for your tribe.</string>
+    <string name="milestone_2k">2,000 steps</string>
+    <string name="milestone_5k">5,000 steps</string>
+    <string name="milestone_10k">10,000 steps</string>
+    <string name="milestone_20k">20,000 steps</string>
+
+    <!-- Oracle -->
+    <string name="oracle_title">The Seer</string>
+    <string name="oracle_submit">Submit</string>
+    <string name="oracle_next">Next</string>
+    <string name="oracle_complete">Complete Assessment</string>
+    <string name="your_tribal_role">Your Tribal Role</string>
+
+    <!-- Profile -->
+    <string name="streak_days">%d day streak</string>
+    <string name="language">Language</string>
+    <string name="english">English</string>
+    <string name="russian">Русский</string>
+</resources>

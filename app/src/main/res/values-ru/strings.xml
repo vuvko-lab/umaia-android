@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Умайя</string>
+
+    <string name="tab_tasks">Задания</string>
+    <string name="tab_steps">Шаги</string>
+    <string name="tab_food">Еда</string>
+    <string name="tab_seer">Провидец</string>
+    <string name="tab_profile">УМАЙЯ</string>
+
+    <string name="sign_in">Войти</string>
+    <string name="sign_up">Регистрация</string>
+    <string name="sign_out">Выйти</string>
+    <string name="sign_in_with_google">Войти через Google</string>
+    <string name="email">Email</string>
+    <string name="password">Пароль</string>
+    <string name="loading">Загрузка…</string>
+    <string name="email_confirmation_sent">Проверьте почту для подтверждения аккаунта.</string>
+
+    <string name="onboarding_next">Далее</string>
+    <string name="onboarding_get_started">Начать</string>
+    <string name="onboarding_title_1">Добро пожаловать в Умайю</string>
+    <string name="onboarding_body_1">Твой путь к здоровью начинается с племени.</string>
+    <string name="onboarding_title_2">Строй деревню</string>
+    <string name="onboarding_body_2">Возводи постройки, назначай рабочих, расти население.</string>
+    <string name="onboarding_title_3">Считай шаги</string>
+    <string name="onboarding_body_3">Ходи, чтобы зарабатывать энергию Нур для племени.</string>
+    <string name="onboarding_title_4">Мудрость еды</string>
+    <string name="onboarding_body_4">Шесть категорий питания для здоровых привычек.</string>
+    <string name="onboarding_title_5">Провидец</string>
+    <string name="onboarding_body_5">Пройди оценку здоровья, чтобы узнать свою роль в племени.</string>
+
+    <string name="resource_food">Еда</string>
+    <string name="resource_water">Вода</string>
+    <string name="resource_fuel">Топливо</string>
+    <string name="resource_felt">Войлок</string>
+    <string name="resource_leather">Кожа</string>
+    <string name="resource_wood">Дерево</string>
+    <string name="resource_kumis">Кумыс</string>
+    <string name="resource_crafts">Ремёсла</string>
+    <string name="resource_songs">Песни</string>
+
+    <string name="building_pasture">Пастбище</string>
+    <string name="building_well">Колодец</string>
+    <string name="building_hearth">Очаг</string>
+    <string name="building_loom">Ткацкий станок</string>
+    <string name="building_tannery">Дубильня</string>
+    <string name="building_woodcamp">Лесоруб</string>
+    <string name="building_brewery">Пивоварня</string>
+    <string name="building_workshop">Мастерская</string>
+    <string name="building_circle">Круг Историй</string>
+    <string name="building_yurt">Новая Юрта</string>
+
+    <string name="population">Население</string>
+    <string name="spirit">Дух</string>
+    <string name="day">День %d</string>
+    <string name="nur">Нур</string>
+    <string name="workers">Рабочие</string>
+    <string name="build">Построить</string>
+    <string name="assign_worker">+Рабочий</string>
+    <string name="remove_worker">-Рабочий</string>
+    <string name="quest">Задание</string>
+
+    <string name="daily_steps">Шаги за день</string>
+    <string name="total_steps">Всего шагов</string>
+    <string name="request_permission">Включить подсчёт шагов</string>
+    <string name="steps_permission_rationale">Подсчёт шагов позволяет зарабатывать Нур для племени.</string>
+
+    <string name="oracle_title">Провидец</string>
+    <string name="oracle_submit">Отправить</string>
+    <string name="oracle_next">Далее</string>
+    <string name="oracle_complete">Завершить оценку</string>
+    <string name="your_tribal_role">Твоя роль в племени</string>
+
+    <string name="streak_days">%d дней подряд</string>
+    <string name="language">Язык</string>
+    <string name="english">English</string>
+    <string name="russian">Русский</string>
+</resources>

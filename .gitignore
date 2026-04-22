@@ -1,0 +1,35 @@
+# Local properties (credentials, SDK path)
+local.properties
+
+# Release signing — never commit keystore or passwords
+*.jks
+*.keystore
+
+# Gradle
+.gradle/
+build/
+**/build/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Generated
+app/src/main/assets/webkit/
+*/release/
+
+# Kotlin
+*.class
+.kotlin/
+
+# Logs
+*.log
