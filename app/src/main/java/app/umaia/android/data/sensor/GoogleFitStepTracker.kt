@@ -32,6 +32,8 @@ class GoogleFitStepTracker @Inject constructor(
 
     private var subscribed = false
 
+    override val isAvailable = true
+
     override val isAuthorized: Boolean
         get() {
             val account = GoogleSignIn.getAccountForExtension(context, fitnessOptions)

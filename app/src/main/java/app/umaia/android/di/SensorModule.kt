@@ -1,6 +1,6 @@
 package app.umaia.android.di
 
-import app.umaia.android.data.sensor.GoogleFitStepTracker
+import app.umaia.android.data.sensor.CompositeStepTracker
 import app.umaia.android.domain.repository.StepTracker
 import dagger.Binds
 import dagger.Module
@@ -13,5 +13,5 @@ import javax.inject.Singleton
 abstract class SensorModule {
 
     @Binds @Singleton
-    abstract fun bindStepTracker(impl: GoogleFitStepTracker): StepTracker
+    abstract fun bindStepTracker(impl: CompositeStepTracker): StepTracker
 }

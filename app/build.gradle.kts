@@ -12,12 +12,12 @@ plugins {
 
 android {
     namespace = "app.umaia.android"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "app.umaia.android"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = (findProperty("versionCode") as String?)?.toIntOrNull() ?: 1
         versionName = (findProperty("versionName") as String?) ?: "1.0"
 
@@ -101,6 +101,8 @@ dependencies {
     implementation(libs.play.services.fitness)
     implementation(libs.play.services.auth)
     implementation(libs.coroutines.play.services)
+
+    implementation(libs.health.connect)
 
     implementation(libs.posthog)
     implementation(libs.appcompat)

@@ -16,10 +16,15 @@ class AnalyticsService @Inject constructor(@ApplicationContext ctx: Context) {
     init {
         val config = PostHogAndroidConfig(BuildConfig.POSTHOG_API_KEY)
         PostHogAndroid.setup(ctx as Application, config)
+        // Set platform super property on all events
+        PostHog.register("platform", "android")
     }
 
-    fun identify(userId: String, email: String?) {
-        PostHog.identify(userId, userProperties = if (email != null) mapOf("email" to email) else null)
+    fun identify(email: String) {
+        PostHog.identify(
+            distinctId = email,
+            userProperties = mapOf("email" to email, "platform" to "android")
+        )
     }
 
     fun signedIn(method: String)       = PostHog.capture("signed_in",      properties = mapOf("method" to method))
@@ -55,4 +60,17 @@ class AnalyticsService @Inject constructor(@ApplicationContext ctx: Context) {
         PostHog.capture("panel_opened", properties = mapOf("panel_id" to panelId))
     fun suspectedStepCheating(steps: Int, distanceMeters: Double) =
         PostHog.capture("suspected_step_cheating", properties = mapOf("steps" to steps, "distance_meters" to distanceMeters.toInt()))
+
+    fun accountDeleted() = PostHog.capture("account_deleted")
+    fun languageChanged(lang: String) =
+        PostHog.capture("language_changed", properties = mapOf("language" to lang))
+    fun themeChanged(theme: String) =
+        PostHog.capture("theme_changed", properties = mapOf("theme" to theme))
+    fun passwordChanged() = PostHog.capture("password_changed")
+    fun leaderboardViewed(period: String) =
+        PostHog.capture("leaderboard_viewed", properties = mapOf("period" to period))
+    fun leaderboardPeriodChanged(period: String) =
+        PostHog.capture("leaderboard_period_changed", properties = mapOf("period" to period))
+    fun stepTrackerConnected(tracker: String) =
+        PostHog.capture("step_tracker_connected", properties = mapOf("tracker" to tracker))
 }

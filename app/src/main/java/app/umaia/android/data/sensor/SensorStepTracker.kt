@@ -34,6 +34,8 @@ class SensorStepTracker @Inject constructor(
 
     private val lastEmitted = AtomicInteger(0)
 
+    override val isAvailable = true
+
     override val isAuthorized: Boolean
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
             context.checkSelfPermission(Manifest.permission.ACTIVITY_RECOGNITION) == PackageManager.PERMISSION_GRANTED

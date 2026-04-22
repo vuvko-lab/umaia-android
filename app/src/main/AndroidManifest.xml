@@ -4,6 +4,11 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
 
     <application
         android:name=".UmaiaApp"
@@ -28,6 +33,10 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="app.umaia.android" android:host="auth-callback" />
+            </intent-filter>
+            <!-- Health Connect permissions rationale -->
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
             </intent-filter>
         </activity>
     </application>

@@ -24,6 +24,7 @@ interface NurRepository {
 }
 
 interface StepTracker {
+    val isAvailable: Boolean get() = true
     val isAuthorized: Boolean
     suspend fun requestAuthorization(): Boolean
     fun observeDailySteps(): Flow<Int>
