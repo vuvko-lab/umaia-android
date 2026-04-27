@@ -20,6 +20,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.umaia.android.domain.model.*
 import app.umaia.android.ui.strings.LocalStrings
+import app.umaia.android.ui.strings.localizedLabel
+import app.umaia.android.ui.strings.localizedOracleText
+import app.umaia.android.ui.strings.localizedText
 import app.umaia.android.ui.theme.*
 
 @Composable
@@ -120,16 +123,17 @@ private fun QuestionPane(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            val s = LocalStrings.current
             Spacer(Modifier.height(8.dp))
             Text("🔮", fontSize = 52.sp)
             Text(
-                question.oracleText,
+                question.localizedOracleText(s.code),
                 color = OracleLight.copy(alpha = 0.7f),
                 fontSize = 13.sp, fontStyle = FontStyle.Italic,
                 textAlign = TextAlign.Center, lineHeight = 18.sp
             )
             Text(
-                question.text,
+                question.localizedText(s.code),
                 color = TC.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center, lineHeight = 24.sp
             )
@@ -159,6 +163,7 @@ private fun QuestionPane(
 
 @Composable
 private fun SingleSelectView(options: List<OracleOption>, onSelect: (String) -> Unit) {
+    val s = LocalStrings.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -186,7 +191,7 @@ private fun SingleSelectView(options: List<OracleOption>, onSelect: (String) -> 
                         )
                     }
                     Spacer(Modifier.width(14.dp))
-                    Text(opt.label, color = TC.text, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                    Text(opt.localizedLabel(s.code), color = TC.text, fontSize = 15.sp, modifier = Modifier.weight(1f))
                     Text("›", color = TC.muted.copy(alpha = 0.3f), fontSize = 14.sp)
                 }
             }
@@ -253,6 +258,7 @@ private fun MultiSelectView(
     onToggle: (String) -> Unit,
     onSubmit: () -> Unit
 ) {
+    val s = LocalStrings.current
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(
             modifier = Modifier
@@ -276,7 +282,7 @@ private fun MultiSelectView(
                             fontSize = 20.sp
                         )
                         Spacer(Modifier.width(14.dp))
-                        Text(opt.label, color = TC.text, fontSize = 15.sp)
+                        Text(opt.localizedLabel(s.code), color = TC.text, fontSize = 15.sp)
                     }
                 }
                 if (idx < options.size - 1) {
@@ -328,19 +334,20 @@ private fun ResultsView(
                 .padding(top = 24.dp, bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(tribalRoleEmoji(result.tribalRole), fontSize = 56.sp)
+            val s = LocalStrings.current
+            Text(tribalRoleEmojiLocal(result.tribalRole), fontSize = 56.sp)
             Spacer(Modifier.height(10.dp))
             Text(
-                LocalStrings.current.oracleSeerRevealed,
+                s.oracleSeerRevealed,
                 color = OracleLight.copy(alpha = 0.7f),
                 fontSize = 11.sp, fontWeight = FontWeight.Medium,
                 letterSpacing = 1.sp
             )
             Spacer(Modifier.height(4.dp))
-            Text(tribalRoleTitle(result.tribalRole), color = OracleLight, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            Text(tribalRoleTitleLocal(result.tribalRole, s.code), color = OracleLight, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(
-                tribalRoleDescription(result.tribalRole),
+                tribalRoleDescriptionLocal(result.tribalRole, s.code),
                 color = TC.muted, fontSize = 13.sp,
                 textAlign = TextAlign.Center, lineHeight = 18.sp,
                 modifier = Modifier.padding(horizontal = 24.dp)
@@ -544,9 +551,15 @@ private fun ErrorPane(message: String, onRetry: () -> Unit) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-private fun tribalRoleEmoji(role: String): String = tribalRoles[role]?.icon ?: "🔮"
-private fun tribalRoleTitle(role: String): String = tribalRoles[role]?.nameEn ?: role.replaceFirstChar { it.uppercase() }
-private fun tribalRoleDescription(role: String): String = tribalRoles[role]?.descEn ?: ""
+private fun tribalRoleEmojiLocal(role: String): String = tribalRoles[role]?.icon ?: "🔮"
+private fun tribalRoleTitleLocal(role: String, code: String): String = when (code) {
+    "en" -> tribalRoles[role]?.nameEn
+    else -> tribalRoles[role]?.nameRu // "ru", "kk", and unknown fall back to Russian
+} ?: role.replaceFirstChar { it.uppercase() }
+private fun tribalRoleDescriptionLocal(role: String, code: String): String = when (code) {
+    "en" -> tribalRoles[role]?.descEn
+    else -> tribalRoles[role]?.descRu
+} ?: ""
 private fun bmiCategoryLabel(cat: String): String = when (cat) {
     "underweight" -> "Underweight"; "normal" -> "Normal"; "overweight" -> "Overweight"
     "obese" -> "Obese"; "severely_obese" -> "Severe"

@@ -36,6 +36,8 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.umaia.android.domain.model.StepMilestone
 import app.umaia.android.ui.strings.LocalStrings
+import app.umaia.android.ui.strings.localizedDesc
+import app.umaia.android.ui.strings.localizedName
 import app.umaia.android.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -49,10 +51,30 @@ fun StepsScreen(
     var showLeaderboard by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    // Google Fit sign-in launcher
-    val fitLauncher = rememberLauncherForActivityResult(
+    // Activity Recognition runtime permission for the on-device step sensor
+    val sensorPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { viewModel.onPermissionResult() }
+
+    // Health Connect permission flow:
+    //   1. Try the SDK contract first (canonical path; requires our rationale Activity
+    //      to be discoverable — provided by HealthConnectRationaleActivity).
+    //   2. If the contract returns an empty granted-set (user denied or HC silently
+    //      closed because rationale wasn't found), open HC's settings UI as fallback.
+    //   3. Either path triggers re-check on return.
+    val hcSettingsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
-    ) { viewModel.onFitPermissionResult() }
+    ) { viewModel.onPermissionResult() }
+    val hcContractLauncher = rememberLauncherForActivityResult(
+        viewModel.healthConnectPermissionContract()
+    ) { granted ->
+        viewModel.onPermissionResult()
+        if (granted.isEmpty()) {
+            viewModel.healthConnectSettingsIntent(context)?.let {
+                runCatching { hcSettingsLauncher.launch(it) }
+            }
+        }
+    }
 
     LaunchedEffect(Unit) { viewModel.onAppear() }
 
@@ -68,11 +90,21 @@ fun StepsScreen(
             .background(TC.bg)
     ) {
         if (!state.isPermissionGranted) {
-            PermissionRequestView(onRequest = {
-                fitLauncher.launch(viewModel.getSignInIntent(context))
-            })
+            PermissionRequestView(
+                onRequestSensor = {
+                    sensorPermLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION)
+                },
+                onRequestHealthConnect = if (viewModel.isHealthConnectAvailable())
+                    { -> runCatching { hcContractLauncher.launch(viewModel.healthConnectPermissions()) } }
+                    else null
+            )
         } else {
-            StepsContent(state = state)
+            StepsContent(
+                state = state,
+                hcAvailable = viewModel.isHealthConnectAvailable(),
+                onEnableHc = { runCatching { hcContractLauncher.launch(viewModel.healthConnectPermissions()) } },
+                onEnableSensor = { sensorPermLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION) }
+            )
         }
 
         // Trophy / Ranking button overlay
@@ -107,7 +139,10 @@ fun StepsScreen(
 // ── Permission Request ────────────────────────────────────────────────────────
 
 @Composable
-private fun PermissionRequestView(onRequest: () -> Unit) {
+private fun PermissionRequestView(
+    onRequestSensor: () -> Unit,
+    onRequestHealthConnect: (() -> Unit)?
+) {
     val s = LocalStrings.current
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
@@ -128,11 +163,22 @@ private fun PermissionRequestView(onRequest: () -> Unit) {
         )
         Spacer(Modifier.height(24.dp))
         Button(
-            onClick = onRequest,
+            onClick = onRequestSensor,
             colors = ButtonDefaults.buttonColors(containerColor = Gold),
             shape = RoundedCornerShape(12.dp)
         ) {
             Text(s.allowAccess, color = NightBlue, fontWeight = FontWeight.Bold)
+        }
+        if (onRequestHealthConnect != null) {
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = onRequestHealthConnect,
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = 0.4f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold)
+            ) {
+                Text(s.syncWithHealthConnect, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+            }
         }
     }
 }
@@ -140,7 +186,12 @@ private fun PermissionRequestView(onRequest: () -> Unit) {
 // ── Steps Content ─────────────────────────────────────────────────────────────
 
 @Composable
-internal fun StepsContent(state: StepsUiState) {
+internal fun StepsContent(
+    state: StepsUiState,
+    hcAvailable: Boolean = false,
+    onEnableHc: () -> Unit = {},
+    onEnableSensor: () -> Unit = {}
+) {
     val s = LocalStrings.current
     Column(
         modifier = Modifier
@@ -209,6 +260,16 @@ internal fun StepsContent(state: StepsUiState) {
             Text(s.nurEarnedToday, color = TC.text, fontSize = 14.sp, modifier = Modifier.weight(1f))
             Text("+${state.nurFromSteps}", color = Gold, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         }
+
+        // Per-source data + tap-to-enable for missing permissions
+        DataSourcesRow(
+            hc = state.debugHcSteps,
+            sensor = state.debugSensorSteps,
+            total = state.dailySteps,
+            hcAvailable = hcAvailable,
+            onEnableHc = onEnableHc,
+            onEnableSensor = onEnableSensor
+        )
 
         // Share steps
         ShareStepsButton(steps = state.dailySteps, nur = state.nurFromSteps)
@@ -316,7 +377,6 @@ private fun StepCircle(steps: Int, nur: Int, progress: Float) {
 @Composable
 private fun MilestoneProgress(current: Int, milestone: StepMilestone) {
     val s = LocalStrings.current
-    val isRu = s.statNur == "Нур"
     val progress = (current.toFloat() / milestone.steps).coerceIn(0f, 1f)
     Column(
         modifier = Modifier
@@ -327,11 +387,11 @@ private fun MilestoneProgress(current: Int, milestone: StepMilestone) {
         Row {
             Column(Modifier.weight(1f)) {
                 Text(
-                    s.nextMilestone(if (isRu) milestone.nameRu else milestone.nameEn),
+                    s.nextMilestone(milestone.localizedName(s.code)),
                     color = TC.text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    if (isRu) milestone.descRu else milestone.descEn,
+                    milestone.localizedDesc(s.code),
                     color = TC.muted, fontSize = 11.sp
                 )
             }
@@ -353,7 +413,6 @@ private fun MilestoneProgress(current: Int, milestone: StepMilestone) {
 @Composable
 private fun MilestoneBadge(milestone: StepMilestone) {
     val s = LocalStrings.current
-    val isRu = s.statNur == "Нур"
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -364,8 +423,8 @@ private fun MilestoneBadge(milestone: StepMilestone) {
         Text("🏆", fontSize = 20.sp)
         Spacer(Modifier.width(8.dp))
         Column(Modifier.weight(1f)) {
-            Text(if (isRu) milestone.nameRu else milestone.nameEn, color = GoldLight, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Text(if (isRu) milestone.descRu else milestone.descEn, color = TC.muted, fontSize = 11.sp)
+            Text(milestone.localizedName(s.code), color = GoldLight, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text(milestone.localizedDesc(s.code), color = TC.muted, fontSize = 11.sp)
         }
         Text("+${milestone.nurBonus} ${s.statNur}", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
     }
@@ -631,5 +690,62 @@ private fun ShareCalendarButton(stepHistory: Map<String, Int>) {
         Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(13.dp))
         Spacer(Modifier.width(6.dp))
         Text(s.shareCalendar, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+// ── Data Sources Row ────────────────────────────────────────────────────────
+
+@Composable
+private fun DataSourcesRow(
+    hc: Int,
+    sensor: Int,
+    total: Int,
+    hcAvailable: Boolean,
+    onEnableHc: () -> Unit,
+    onEnableSensor: () -> Unit
+) {
+    val s = LocalStrings.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(TC.cardAlt, RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(s.dataSources, color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        if (hcAvailable) {
+            SourceRow(
+                label = s.sourceHealthConnect,
+                value = hc,
+                onTapToEnable = onEnableHc.takeIf { hc < 0 }
+            )
+        }
+        SourceRow(
+            label = s.sourceOnDeviceSensor,
+            value = sensor,
+            onTapToEnable = onEnableSensor.takeIf { sensor < 0 }
+        )
+        Row(modifier = Modifier.fillMaxWidth()) {
+            Text(s.activeMax, color = Gold.copy(alpha = 0.8f), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+            Text("%,d".format(total), color = Gold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun SourceRow(label: String, value: Int, onTapToEnable: (() -> Unit)?) {
+    val s = LocalStrings.current
+    val baseModifier = Modifier.fillMaxWidth()
+    val rowModifier = if (onTapToEnable != null)
+        baseModifier.clickable { onTapToEnable() }.padding(vertical = 4.dp)
+    else
+        baseModifier.padding(vertical = 4.dp)
+    Row(modifier = rowModifier, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = TC.muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
+        if (onTapToEnable != null) {
+            Text(s.enableArrow, color = Gold, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        } else {
+            Text("%,d".format(value), color = TC.text, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        }
     }
 }

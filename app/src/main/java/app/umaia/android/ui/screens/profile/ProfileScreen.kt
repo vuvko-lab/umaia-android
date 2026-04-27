@@ -284,17 +284,22 @@ internal fun RolePanelView(role: String) {
             .background(OraclePurple.copy(alpha = 0.05f), RoundedCornerShape(14.dp))
             .padding(16.dp)
     ) {
+        val s = LocalStrings.current
+        val isRu = s.code == "ru"
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("🛡 ", fontSize = 12.sp)
-            Text("YOUR ROLE", color = OracleLight, fontSize = 10.sp, letterSpacing = 1.5.sp)
+            Text(
+                if (isRu) "ТВОЯ РОЛЬ" else if (s.code == "kk") "СЕНІҢ РӨЛІҢ" else "YOUR ROLE",
+                color = OracleLight, fontSize = 10.sp, letterSpacing = 1.5.sp
+            )
         }
         Spacer(Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(tribalRoleEmoji(role), fontSize = 36.sp)
             Spacer(Modifier.width(12.dp))
             Column {
-                Text(tribalRoleTitle(role), color = OracleLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                Text(tribalRoleFocus(role), color = TC.muted, fontSize = 11.sp)
+                Text(tribalRoleTitle(role, isRu), color = OracleLight, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(tribalRoleFocus(role, isRu), color = TC.muted, fontSize = 11.sp)
             }
         }
     }

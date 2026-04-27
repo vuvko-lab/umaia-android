@@ -110,12 +110,27 @@ class GameViewModel @Inject constructor(
         _populationEvent.value = null
     }
 
+    @Volatile private var buildInFlight = false
+
     fun buildBuilding(type: BuildingId) {
+        // Debounce: a single tap should not enqueue two builds
+        if (buildInFlight) return
+        buildInFlight = true
         viewModelScope.launch {
-            gameStateStore.update { state ->
-                val next = buildBuilding(state, type) ?: return@update state
-                analytics.buildingBuilt(type.name.lowercase())
-                checkAndCompleteQuests(next)
+            try {
+                gameStateStore.update { state ->
+                    val built = buildBuilding(state, type) ?: return@update state
+                    val def = buildingDef(type)
+                    // Auto-assign one worker to the new building if it has slots and population is free
+                    val withWorker = if (def.maxWorkers > 0 && built.totalWorkers < built.population) {
+                        val newInstance = built.buildings.last()
+                        assignWorker(built, newInstance.instanceId, +1)
+                    } else built
+                    analytics.buildingBuilt(type.name.lowercase())
+                    checkAndCompleteQuests(withWorker)
+                }
+            } finally {
+                buildInFlight = false
             }
         }
     }

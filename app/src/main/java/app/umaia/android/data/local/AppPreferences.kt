@@ -20,12 +20,24 @@ class AppPreferences @Inject constructor(@ApplicationContext ctx: Context) {
         ctx.getSharedPreferences("umaia_app_prefs", Context.MODE_PRIVATE)
 
     private val _themeMode = MutableStateFlow(
-        ThemeMode.valueOf(prefs.getString("theme_mode", ThemeMode.SYSTEM.name)!!)
+        runCatching {
+            ThemeMode.valueOf(prefs.getString("theme_mode", null) ?: ThemeMode.SYSTEM.name)
+        }.getOrDefault(ThemeMode.LIGHT)
     )
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
-    private val _language = MutableStateFlow(prefs.getString("language", "en")!!)
+    private val supportedLanguages = setOf("en", "ru", "kk")
+    private val _language = MutableStateFlow(
+        prefs.getString("language", null) ?: defaultLanguage()
+    )
     val language: StateFlow<String> = _language.asStateFlow()
+
+    private fun defaultLanguage(): String {
+        val systemLang = runCatching {
+            java.util.Locale.getDefault().language
+        }.getOrNull()
+        return if (systemLang in supportedLanguages) systemLang!! else "ru"
+    }
 
     fun setThemeMode(mode: ThemeMode) {
         prefs.edit().putString("theme_mode", mode.name).apply()

@@ -33,16 +33,17 @@ class MainActivity : AppCompatActivity() {
         setContent {
             val themeMode by appPreferences.themeMode.collectAsState()
             val language by appPreferences.language.collectAsState()
-            val systemDark = isSystemInDarkTheme()
+            // Falls back to light theme if system theme cannot be determined
+            val systemDark = runCatching { isSystemInDarkTheme() }.getOrDefault(false)
             val isDark = when (themeMode) {
                 ThemeMode.DARK   -> true
                 ThemeMode.LIGHT  -> false
                 ThemeMode.SYSTEM -> systemDark
             }
             val strings = when (language) {
-                "ru" -> RuStrings
+                "en" -> EnStrings
                 "kk" -> KkStrings
-                else -> EnStrings
+                else -> RuStrings // "ru" or any unknown code falls back to Russian
             }
             androidx.compose.runtime.CompositionLocalProvider(LocalStrings provides strings) {
                 UmaiaTheme(darkTheme = isDark) {

@@ -42,6 +42,7 @@ class AuthService @Inject constructor(
     private var refreshJob: Job? = null
 
     val currentUserId: String? get() = tokenStorage.userId
+    val currentUserEmail: String? get() = tokenStorage.email
 
     init { restoreSession() }
 

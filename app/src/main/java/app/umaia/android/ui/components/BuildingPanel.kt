@@ -14,6 +14,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.umaia.android.domain.model.*
 import app.umaia.android.ui.strings.LocalStrings
+import app.umaia.android.ui.strings.localizedDesc
+import app.umaia.android.ui.strings.localizedName
 import app.umaia.android.ui.theme.*
 
 @Composable
@@ -25,6 +27,7 @@ fun BuildingPanel(
     onAssign: (delta: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val s = LocalStrings.current
     val canAfford = def.cost.all { (rId, cost) -> resources[rId] >= cost }
     val hasWorkers = def.maxWorkers > 0
 
@@ -37,8 +40,8 @@ fun BuildingPanel(
             Text(def.icon, fontSize = 24.sp)
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
-                Text(def.nameEn, color = TC.text, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                Text(def.descEn, color = TC.muted, fontSize = 11.sp, lineHeight = 14.sp)
+                Text(def.localizedName(s.code), color = TC.text, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(def.localizedDesc(s.code), color = TC.muted, fontSize = 11.sp, lineHeight = 14.sp)
             }
             if (group != null && group.count > 0) {
                 Text("×${group.count}", color = GoldLight, fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -73,7 +76,7 @@ fun BuildingPanel(
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                 modifier = Modifier.height(34.dp)
             ) {
-                Text("Build", color = NightBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text(s.tabBuild, color = NightBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
 
             // Worker controls (only for buildings that use workers)
@@ -110,17 +113,18 @@ fun BuildingsPanelWithTabs(
     var selectedTab by remember { mutableStateOf(0) }
     val unlockedTier = maxUnlockedTier(state.buildings)
     val grouped = state.buildings.groupBy { it.type }
+    val s = LocalStrings.current
 
     Column(modifier = modifier) {
         TabRow(selectedTabIndex = selectedTab, containerColor = TC.card) {
             Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }) {
-                Text("Camp", Modifier.padding(vertical = 12.dp), fontSize = 12.sp)
+                Text(s.tabCamp, Modifier.padding(vertical = 12.dp), fontSize = 12.sp)
             }
             Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }) {
-                Text("Build", Modifier.padding(vertical = 12.dp), fontSize = 12.sp)
+                Text(s.tabBuild, Modifier.padding(vertical = 12.dp), fontSize = 12.sp)
             }
             Tab(selected = selectedTab == 2, onClick = { selectedTab = 2 }) {
-                Text("UMAIA", Modifier.padding(vertical = 12.dp), fontSize = 12.sp)
+                Text(s.tabUmaia, Modifier.padding(vertical = 12.dp), fontSize = 12.sp)
             }
         }
 
@@ -142,7 +146,6 @@ private fun CampTab(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -161,7 +164,7 @@ private fun CampTab(
                             .padding(10.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(def.nameEn, color = TC.text, fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                        Text(def.localizedName(s.code), color = TC.text, fontWeight = FontWeight.Medium, fontSize = 12.sp)
                         instances.forEachIndexed { idx, instance ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -208,7 +211,6 @@ private fun BuildTab(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -243,7 +245,6 @@ private fun UmaiaTab(state: GameState, onNavigateToOracle: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -253,10 +254,10 @@ private fun UmaiaTab(state: GameState, onNavigateToOracle: () -> Unit) {
         Text(s.howGameWorks, color = TC.text, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
 
         val gameLoop = listOf(
-            Triple("👣", "Walk", "Your steps earn Nur"),
-            Triple("✨", "Earn Nur", "Light for your tribe"),
-            Triple("🏗️", "Build", "Structures for your people"),
-            Triple("👥", "Grow", "Your tribe becomes stronger")
+            Triple("👣", s.gameLoopWalkTitle, s.gameLoopWalkDesc),
+            Triple("✨", s.gameLoopNurTitle, s.gameLoopNurDesc),
+            Triple("🏗️", s.gameLoopBuildTitle, s.gameLoopBuildDesc),
+            Triple("👥", s.gameLoopGrowTitle, s.gameLoopGrowDesc)
         )
 
         gameLoop.forEach { (emoji, title, desc) ->
@@ -290,10 +291,10 @@ private fun UmaiaTab(state: GameState, onNavigateToOracle: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("🎯", fontSize = 14.sp)
                     Spacer(Modifier.width(6.dp))
-                    Text(quest.nameEn, color = TC.text, fontWeight = FontWeight.Medium, fontSize = 12.sp)
+                    Text(quest.localizedName(s.code), color = TC.text, fontWeight = FontWeight.Medium, fontSize = 12.sp)
                 }
                 Spacer(Modifier.height(4.dp))
-                Text(quest.descEn, color = TC.muted, fontSize = 10.sp, lineHeight = 13.sp)
+                Text(quest.localizedDesc(s.code), color = TC.muted, fontSize = 10.sp, lineHeight = 13.sp)
             }
         }
 

@@ -7,7 +7,14 @@
     <uses-permission android:name="android.permission.health.READ_STEPS" />
 
     <queries>
+        <!-- Legacy standalone Health Connect app (Android 13 and below) -->
         <package android:name="com.google.android.apps.healthdata" />
+        <!-- Built-in Health Connect controller (Android 14+) -->
+        <package android:name="com.google.android.healthconnect.controller" />
+        <!-- Settings intent visibility for opening HC permissions UI -->
+        <intent>
+            <action android:name="androidx.health.ACTION_HEALTH_CONNECT_SETTINGS" />
+        </intent>
     </queries>
 
     <application
@@ -34,9 +41,21 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="app.umaia.android" android:host="auth-callback" />
             </intent-filter>
-            <!-- Health Connect permissions rationale -->
+        </activity>
+
+        <!-- Health Connect permissions rationale screen. Health Connect launches this
+             when the user is granting permissions; required for HC to consider us a
+             valid permission requester. -->
+        <activity
+            android:name=".ui.screens.health.HealthConnectRationaleActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Umaia">
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity>
 

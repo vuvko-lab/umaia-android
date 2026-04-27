@@ -32,12 +32,25 @@ class AuthViewModel @Inject constructor(
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> = _loading.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            authState.collect { state ->
+                if (state is AuthState.Authenticated) {
+                    authService.currentUserEmail?.let { analytics.identify(it) }
+                }
+            }
+        }
+    }
+
     fun signIn(email: String, password: String) {
         viewModelScope.launch {
             _loading.value = true
             _error.value = null
             when (val r = authService.signIn(email, password)) {
-                is AuthResult.Success  -> analytics.signedIn("email")
+                is AuthResult.Success  -> {
+                    analytics.identify(email)
+                    analytics.signedIn("email")
+                }
                 is AuthResult.Failure  -> _error.value = r.message
                 else -> {}
             }
@@ -50,7 +63,10 @@ class AuthViewModel @Inject constructor(
             _loading.value = true
             _error.value = null
             when (val r = authService.signUp(email, password)) {
-                is AuthResult.Success              -> analytics.signedIn("email_signup")
+                is AuthResult.Success              -> {
+                    analytics.identify(email)
+                    analytics.signedIn("email_signup")
+                }
                 is AuthResult.NeedsEmailConfirmation -> _error.value = "Check your email to confirm."
                 is AuthResult.Failure              -> _error.value = r.message
             }
@@ -83,7 +99,10 @@ class AuthViewModel @Inject constructor(
                 }
                 if (idToken != null) {
                     when (val r = authService.signInWithGoogleToken(idToken)) {
-                        is AuthResult.Success -> analytics.signedIn("google")
+                        is AuthResult.Success -> {
+                            authService.currentUserEmail?.let { analytics.identify(it) }
+                            analytics.signedIn("google")
+                        }
                         is AuthResult.Failure -> _error.value = r.message
                         else -> {}
                     }

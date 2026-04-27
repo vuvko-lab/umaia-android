@@ -20,7 +20,6 @@ import java.time.temporal.ChronoUnit
 import java.util.Date
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.runBlocking as runBlockingCoroutines
 
 @Singleton
 class HealthConnectStepTracker @Inject constructor(
@@ -31,24 +30,35 @@ class HealthConnectStepTracker @Inject constructor(
 
     val permissions = setOf(HealthPermission.getReadPermission(StepsRecord::class))
 
+    /** Cached authorization state. Updated on init and on [refreshAuthorization] calls
+     *  (typically after a permission-grant activity returns). */
+    @Volatile
+    private var authorizedCached: Boolean = false
+
     override val isAvailable: Boolean
         get() = HealthConnectClient.getSdkStatus(context) == SDK_AVAILABLE
 
     override val isAuthorized: Boolean
-        get() {
-            if (!isAvailable) return false
-            return try {
-                runBlockingCoroutines {
-                    val grantedPermissions = client.permissionController.getGrantedPermissions()
-                    permissions.all { grantedPermissions.contains(it) }
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to check HC authorization", e)
-                false
-            }
-        }
+        get() = authorizedCached
 
-    override suspend fun requestAuthorization() = isAuthorized
+    /** Recompute the cached authorization state. Call after a permission flow returns. */
+    suspend fun refreshAuthorization(): Boolean {
+        authorizedCached = computeAuthorized()
+        return authorizedCached
+    }
+
+    private suspend fun computeAuthorized(): Boolean {
+        if (!isAvailable) return false
+        return try {
+            val granted = client.permissionController.getGrantedPermissions()
+            permissions.all { granted.contains(it) }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to check HC authorization", e)
+            false
+        }
+    }
+
+    override suspend fun requestAuthorization() = refreshAuthorization()
 
     override fun observeDailySteps(): Flow<Int> = flow {
         while (true) {

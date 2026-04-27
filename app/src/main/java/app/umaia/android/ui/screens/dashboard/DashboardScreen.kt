@@ -31,6 +31,8 @@ import app.umaia.android.ui.components.BuildingsPanelWithTabs
 import app.umaia.android.ui.components.ResourceBar
 import app.umaia.android.ui.components.VillageScene
 import app.umaia.android.ui.strings.LocalStrings
+import app.umaia.android.ui.strings.localizedDesc
+import app.umaia.android.ui.strings.localizedName
 import app.umaia.android.ui.theme.*
 
 @Composable
@@ -177,14 +179,14 @@ private fun WelcomeDialog(onDismiss: () -> Unit) {
     val s = LocalStrings.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Welcome to UMAIA", color = Gold, fontWeight = FontWeight.Bold) },
+        title = { Text(s.welcomeTitle, color = Gold, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 listOf(
-                    "👣 " to "Walk to earn Nur",
-                    "🏕️ " to "Build structures for your tribe",
-                    "🔮 " to "Consult the Oracle to discover your role",
-                    "🌿 " to "Learn the wisdom of the steppe"
+                    "👣 " to s.welcomeRuleWalk,
+                    "🏕️ " to s.welcomeRuleBuild,
+                    "🔮 " to s.welcomeRuleOracle,
+                    "🌿 " to s.welcomeRuleLearn
                 ).forEach { (emoji, text) ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(emoji, fontSize = 16.sp)
@@ -218,16 +220,13 @@ private fun ReturnWelcomeDialog(daysAway: Int, nurBonus: Int, onDismiss: () -> U
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Welcome back!", color = Gold, fontWeight = FontWeight.Bold) },
+        title = { Text(s.welcomeBackHello, color = Gold, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(emoji, fontSize = 32.sp)
                     Spacer(Modifier.width(12.dp))
-                    Text(
-                        "You've been away for $daysAway day" + if (daysAway != 1) "s" else "",
-                        color = TC.muted, fontSize = 14.sp
-                    )
+                    Text(s.daysAway(daysAway), color = TC.muted, fontSize = 14.sp)
                 }
                 if (nurBonus > 0) {
                     Surface(
@@ -241,8 +240,8 @@ private fun ReturnWelcomeDialog(daysAway: Int, nurBonus: Int, onDismiss: () -> U
                             Text("🎁", fontSize = 16.sp)
                             Spacer(Modifier.width(8.dp))
                             Column(Modifier.weight(1f)) {
-                                Text("Returning bonus", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                Text("$nurBonus Nur", color = TC.muted, fontSize = 11.sp)
+                                Text(s.returningBonus, color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text(s.nurAmount(nurBonus), color = TC.muted, fontSize = 11.sp)
                             }
                         }
                     }
@@ -287,15 +286,16 @@ private fun SessionCompleteDialog(
     populationCount: Int,
     onDismiss: () -> Unit
 ) {
+    val s = LocalStrings.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Session Complete", color = Gold, fontWeight = FontWeight.Bold) },
+        title = { Text(s.sessionComplete, color = Gold, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 listOf(
-                    Triple("🎯", "Quests Completed", "$questsCompleted"),
-                    Triple("🏗️", "Buildings Built", "$buildingsBuilt"),
-                    Triple("👥", "Population", "$populationCount")
+                    Triple("🎯", s.questsCompletedLabel, "$questsCompleted"),
+                    Triple("🏗️", s.buildingsBuiltLabel, "$buildingsBuilt"),
+                    Triple("👥", s.populationLabel, "$populationCount")
                 ).forEach { (emoji, label, value) ->
                     Row(
                         modifier = Modifier
@@ -319,7 +319,7 @@ private fun SessionCompleteDialog(
             Button(
                 onClick = onDismiss,
                 colors = ButtonDefaults.buttonColors(containerColor = Gold)
-            ) { Text("Close", color = NightBlue, fontWeight = FontWeight.Bold) }
+            ) { Text(s.closeAction, color = NightBlue, fontWeight = FontWeight.Bold) }
         },
         containerColor = TC.card
     )
@@ -416,10 +416,10 @@ internal fun DashboardContent(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("🎯", fontSize = 16.sp)
                     Spacer(Modifier.width(8.dp))
-                    Text(quest.nameEn, color = TC.text, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                    Text(quest.localizedName(s.code), color = TC.text, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                 }
                 Spacer(Modifier.height(4.dp))
-                Text(quest.descEn, color = TC.muted, fontSize = 11.sp, lineHeight = 15.sp)
+                Text(quest.localizedDesc(s.code), color = TC.muted, fontSize = 11.sp, lineHeight = 15.sp)
             }
         }
 
@@ -461,7 +461,7 @@ private fun StatPill(icon: String, value: String, label: String, color: Color, m
             Text(icon, fontSize = 15.sp)
         }
         Spacer(Modifier.height(3.dp))
-        Text(value, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(value, color = TC.text, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         Text(label, color = TC.muted, fontSize = 9.sp, maxLines = 1)
     }
 }

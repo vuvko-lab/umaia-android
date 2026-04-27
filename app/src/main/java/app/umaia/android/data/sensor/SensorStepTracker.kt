@@ -20,8 +20,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Fallback step tracker using the hardware TYPE_STEP_COUNTER sensor.
- * Currently unused — GoogleFitStepTracker is the active implementation.
+ * Step tracker backed by the hardware TYPE_STEP_COUNTER sensor.
+ * One of two sources merged by [CompositeStepTracker]; the other is Health Connect.
  */
 @Singleton
 class SensorStepTracker @Inject constructor(
@@ -64,6 +64,9 @@ class SensorStepTracker @Inject constructor(
                 val daily = maxOf(0, totalSteps - baseline)
                 lastEmitted.set(daily)
                 stepPrefs.lastActiveDate = today
+                // Record cumulative counter so we can compute gap deltas next session
+                stepPrefs.lastSensorCumulative = totalSteps
+                stepPrefs.lastSensorCumulativeTs = System.currentTimeMillis()
                 trySend(daily)
             }
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
@@ -78,5 +81,40 @@ class SensorStepTracker @Inject constructor(
 
     override suspend fun currentDailySteps(): Int = lastEmitted.get()
 
-    override suspend fun querySteps(from: java.util.Date, to: java.util.Date): Int = 0
+    /**
+     * Returns the cumulative-counter delta since [from]. Best-effort:
+     *   * Requires a cumulative snapshot recorded at-or-before [from] (last app session).
+     *   * Returns 0 if we have no snapshot, or the snapshot post-dates [from] (we have no data
+     *     about [from]).
+     *   * The current cumulative count is read by registering a one-shot listener with a short
+     *     timeout — TYPE_STEP_COUNTER doesn't support direct sync reads.
+     */
+    override suspend fun querySteps(from: java.util.Date, to: java.util.Date): Int {
+        val baselineCumulative = stepPrefs.lastSensorCumulative
+        val baselineTs = stepPrefs.lastSensorCumulativeTs
+        if (baselineCumulative < 0 || baselineTs == 0L) return 0
+        if (baselineTs > from.time) return 0  // Snapshot is newer than [from] — no info
+        val current = readCurrentCumulative() ?: return 0
+        val delta = current - baselineCumulative
+        return if (delta > 0) delta else 0
+    }
+
+    private suspend fun readCurrentCumulative(): Int? {
+        val sm = sensorManager ?: return null
+        val sensor = stepSensor ?: return null
+        return kotlinx.coroutines.withTimeoutOrNull(2_000L) {
+            kotlinx.coroutines.suspendCancellableCoroutine<Int> { cont ->
+                val listener = object : SensorEventListener {
+                    override fun onSensorChanged(event: SensorEvent) {
+                        if (event.sensor.type != Sensor.TYPE_STEP_COUNTER) return
+                        sm.unregisterListener(this)
+                        if (cont.isActive) cont.resumeWith(Result.success(event.values[0].toInt()))
+                    }
+                    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+                }
+                sm.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_FASTEST)
+                cont.invokeOnCancellation { sm.unregisterListener(listener) }
+            }
+        }
+    }
 }

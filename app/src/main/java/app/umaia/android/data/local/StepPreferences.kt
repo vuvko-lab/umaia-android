@@ -48,6 +48,17 @@ class StepPreferences @Inject constructor(@ApplicationContext ctx: Context) {
         get() = prefs.getLong("step_last_active_ts", 0L)
         private set(v) { prefs.edit().putLong("step_last_active_ts", v).apply() }
 
+    /** Last observed cumulative TYPE_STEP_COUNTER value, captured while sensor listener was active.
+     *  Used to compute deltas across app sessions when HC has no data for the gap. */
+    var lastSensorCumulative: Int
+        get() = prefs.getInt("step_last_sensor_cumulative", -1)
+        set(v) { prefs.edit().putInt("step_last_sensor_cumulative", v).apply() }
+
+    /** Epoch millis when [lastSensorCumulative] was captured. */
+    var lastSensorCumulativeTs: Long
+        get() = prefs.getLong("step_last_sensor_cumulative_ts", 0L)
+        set(v) { prefs.edit().putLong("step_last_sensor_cumulative_ts", v).apply() }
+
     /** Call whenever the user is actively using the app / steps are flowing. */
     fun recordActive() {
         val now = System.currentTimeMillis()

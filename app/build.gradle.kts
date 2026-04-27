@@ -18,8 +18,8 @@ android {
         applicationId = "app.umaia.android"
         minSdk = 26
         targetSdk = 36
-        versionCode = (findProperty("versionCode") as String?)?.toIntOrNull() ?: 2
-        versionName = (findProperty("versionName") as String?) ?: "1.1"
+        versionCode = (findProperty("versionCode") as String?)?.toIntOrNull() ?: 3
+        versionName = (findProperty("versionName") as String?) ?: "1.2.0"
 
         val localPropsFile = rootProject.file("local.properties")
         val props = Properties()
@@ -97,10 +97,6 @@ dependencies {
     implementation(libs.credentials)
     implementation(libs.credentials.play.services)
     implementation(libs.googleid)
-
-    implementation(libs.play.services.fitness)
-    implementation(libs.play.services.auth)
-    implementation(libs.coroutines.play.services)
 
     implementation(libs.health.connect)
 

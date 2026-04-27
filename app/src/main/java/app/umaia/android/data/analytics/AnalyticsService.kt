@@ -14,16 +14,25 @@ import javax.inject.Singleton
 class AnalyticsService @Inject constructor(@ApplicationContext ctx: Context) {
 
     init {
-        val config = PostHogAndroidConfig(BuildConfig.POSTHOG_API_KEY)
+        val config = PostHogAndroidConfig(
+            apiKey = BuildConfig.POSTHOG_API_KEY,
+            host = "https://eu.i.posthog.com"
+        )
         PostHogAndroid.setup(ctx as Application, config)
-        // Set platform super property on all events
+        // Super properties on all events
         PostHog.register("platform", "android")
+        PostHog.register("app_version", BuildConfig.VERSION_NAME)
+        PostHog.register("app_version_code", BuildConfig.VERSION_CODE)
     }
 
     fun identify(email: String) {
         PostHog.identify(
             distinctId = email,
-            userProperties = mapOf("email" to email, "platform" to "android")
+            userProperties = mapOf(
+                "email" to email,
+                "platform" to "android",
+                "app_version" to BuildConfig.VERSION_NAME
+            )
         )
     }
 

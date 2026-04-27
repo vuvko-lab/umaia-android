@@ -6,6 +6,10 @@ import androidx.compose.runtime.compositionLocalOf
 
 data class AppStrings(
 
+    /** Language code: "en", "ru", or "kk". Used by extensions in [Localized] to pick
+     *  the right field from domain models that carry per-language strings. */
+    val code: String,
+
     // ── Navigation tabs ───────────────────────────────────────────────────────
     val tabTasks: String,
     val tabSteps: String,
@@ -177,16 +181,68 @@ data class AppStrings(
     val narrativeUnder6k: String,
     val narrativeUnder10k: String,
     val narrativeUnder15k: String,
-    val narrativeMax: String
+    val narrativeMax: String,
+
+    // ── Steps screen — data sources ───────────────────────────────────────────
+    val syncWithHealthConnect: String,
+    val dataSources: String,
+    val sourceHealthConnect: String,
+    val sourceOnDeviceSensor: String,
+    val activeMax: String,
+    val enableArrow: String,
+
+    // ── Health Connect rationale screen ───────────────────────────────────────
+    val hcRationaleTitle: String,
+    val hcRationaleBody: String,
+    val hcStepsLabel: String,
+    val hcStepsDesc: String,
+    val hcNoWriteAssurance: String,
+    val gotIt: String,
+
+    // ── First-visit welcome dialog ────────────────────────────────────────────
+    val welcomeTitle: String,
+    val welcomeRuleWalk: String,
+    val welcomeRuleBuild: String,
+    val welcomeRuleOracle: String,
+    val welcomeRuleLearn: String,
+
+    // ── Return-after-gap welcome dialog ───────────────────────────────────────
+    val welcomeBackHello: String,
+    val daysAway: (Int) -> String,
+    val returningBonus: String,
+    val nurAmount: (Int) -> String,
+
+    // ── Session complete dialog ───────────────────────────────────────────────
+    val sessionComplete: String,
+    val questsCompletedLabel: String,
+    val buildingsBuiltLabel: String,
+    val populationLabel: String,
+    val closeAction: String,
+
+    // ── Building tabs ─────────────────────────────────────────────────────────
+    val tabCamp: String,
+    val tabBuild: String,
+    val tabUmaia: String,
+
+    // ── Game loop (UMAIA tab) ─────────────────────────────────────────────────
+    val gameLoopWalkTitle: String,
+    val gameLoopWalkDesc: String,
+    val gameLoopNurTitle: String,
+    val gameLoopNurDesc: String,
+    val gameLoopBuildTitle: String,
+    val gameLoopBuildDesc: String,
+    val gameLoopGrowTitle: String,
+    val gameLoopGrowDesc: String
 )
 
 // ── CompositionLocal ──────────────────────────────────────────────────────────
 
-val LocalStrings = compositionLocalOf { EnStrings }
+val LocalStrings = compositionLocalOf { RuStrings }
 
 // ── English ───────────────────────────────────────────────────────────────────
 
 val EnStrings = AppStrings(
+    code = "en",
     tabTasks = "Tasks",
     tabSteps = "Steps",
     tabFood = "Food",
@@ -360,12 +416,57 @@ Now you are part of this movement. Your motion is not just exercise. It is the s
     narrativeUnder6k = "Nur flows with every step.",
     narrativeUnder10k = "The tribe feels your energy!",
     narrativeUnder15k = "You carry light to the village!",
-    narrativeMax = "A legend of the steppe walks today!"
+    narrativeMax = "A legend of the steppe walks today!",
+
+    syncWithHealthConnect = "Sync with Health Connect",
+    dataSources = "Data sources",
+    sourceHealthConnect = "Health Connect",
+    sourceOnDeviceSensor = "On-device sensor",
+    activeMax = "Active (max)",
+    enableArrow = "Enable ›",
+
+    hcRationaleTitle = "Health Connect",
+    hcRationaleBody = "Umaia uses Health Connect to read your step count so we can award Nur and track your daily activity in the game.",
+    hcStepsLabel = "Steps",
+    hcStepsDesc = "Today's step count, used to compute Nur and unlock quests",
+    hcNoWriteAssurance = "We don't write any data to Health Connect, and we don't share your health data with third parties.",
+    gotIt = "Got it",
+
+    welcomeTitle = "Welcome to UMAIA",
+    welcomeRuleWalk = "Walk to earn Nur",
+    welcomeRuleBuild = "Build structures for your tribe",
+    welcomeRuleOracle = "Consult the Oracle to discover your role",
+    welcomeRuleLearn = "Learn the wisdom of the steppe",
+
+    welcomeBackHello = "Welcome back!",
+    daysAway = { days -> "You've been away for $days day" + if (days != 1) "s" else "" },
+    returningBonus = "Returning bonus",
+    nurAmount = { n -> "$n Nur" },
+
+    sessionComplete = "Session Complete",
+    questsCompletedLabel = "Quests Completed",
+    buildingsBuiltLabel = "Buildings Built",
+    populationLabel = "Population",
+    closeAction = "Close",
+
+    tabCamp = "Camp",
+    tabBuild = "Build",
+    tabUmaia = "UMAIA",
+
+    gameLoopWalkTitle = "Walk",
+    gameLoopWalkDesc = "Your steps earn Nur",
+    gameLoopNurTitle = "Earn Nur",
+    gameLoopNurDesc = "Light for your tribe",
+    gameLoopBuildTitle = "Build",
+    gameLoopBuildDesc = "Structures for your people",
+    gameLoopGrowTitle = "Grow",
+    gameLoopGrowDesc = "Your tribe becomes stronger"
 )
 
 // ── Russian ───────────────────────────────────────────────────────────────────
 
 val RuStrings = AppStrings(
+    code = "ru",
     tabTasks = "Задания",
     tabSteps = "Шаги",
     tabFood = "Еда",
@@ -539,12 +640,64 @@ val RuStrings = AppStrings(
     narrativeUnder6k = "Нур течёт с каждым шагом.",
     narrativeUnder10k = "Племя чувствует твою энергию!",
     narrativeUnder15k = "Ты несёшь свет в деревню!",
-    narrativeMax = "Легенда степи шагает сегодня!"
+    narrativeMax = "Легенда степи шагает сегодня!",
+
+    syncWithHealthConnect = "Синхронизация с Health Connect",
+    dataSources = "Источники данных",
+    sourceHealthConnect = "Health Connect",
+    sourceOnDeviceSensor = "Датчик устройства",
+    activeMax = "Активный (макс.)",
+    enableArrow = "Включить ›",
+
+    hcRationaleTitle = "Health Connect",
+    hcRationaleBody = "Umaia использует Health Connect для чтения количества твоих шагов, чтобы начислять Нур и отслеживать активность в игре.",
+    hcStepsLabel = "Шаги",
+    hcStepsDesc = "Шаги за сегодня — для расчёта Нура и заданий",
+    hcNoWriteAssurance = "Мы не записываем данные в Health Connect и не передаём их третьим лицам.",
+    gotIt = "Понятно",
+
+    welcomeTitle = "Добро пожаловать в УМАЙЯ",
+    welcomeRuleWalk = "Ходи, чтобы зарабатывать Нур",
+    welcomeRuleBuild = "Возводи постройки для племени",
+    welcomeRuleOracle = "Поговори с Провидцем, чтобы узнать свою роль",
+    welcomeRuleLearn = "Постигай мудрость степи",
+
+    welcomeBackHello = "С возвращением!",
+    daysAway = { days ->
+        val word = when {
+            days % 10 == 1 && days % 100 != 11 -> "день"
+            days % 10 in 2..4 && (days % 100 !in 12..14) -> "дня"
+            else -> "дней"
+        }
+        "Ты отсутствовал $days $word"
+    },
+    returningBonus = "Бонус за возвращение",
+    nurAmount = { n -> "$n Нур" },
+
+    sessionComplete = "Сессия завершена",
+    questsCompletedLabel = "Заданий выполнено",
+    buildingsBuiltLabel = "Построек возведено",
+    populationLabel = "Население",
+    closeAction = "Закрыть",
+
+    tabCamp = "Лагерь",
+    tabBuild = "Стройка",
+    tabUmaia = "УМАЙЯ",
+
+    gameLoopWalkTitle = "Ходи",
+    gameLoopWalkDesc = "Шаги дают Нур",
+    gameLoopNurTitle = "Зарабатывай Нур",
+    gameLoopNurDesc = "Свет для племени",
+    gameLoopBuildTitle = "Строй",
+    gameLoopBuildDesc = "Постройки для людей",
+    gameLoopGrowTitle = "Развивайся",
+    gameLoopGrowDesc = "Племя становится сильнее"
 )
 
 // ── Kazakh ───────────────────────────────────────────────────────────────────
 
 val KkStrings = AppStrings(
+    code = "kk",
     tabTasks = "Тапсырмалар",
     tabSteps = "Қадамдар",
     tabFood = "Азық",
@@ -718,5 +871,49 @@ val KkStrings = AppStrings(
     narrativeUnder6k = "Нұр әр қадаммен ағады.",
     narrativeUnder10k = "Ру сенің энергияңды сезеді!",
     narrativeUnder15k = "Сен ауылға жарық алып келесің!",
-    narrativeMax = "Сен аңыздардың арасында жүресің. Дала саған бас иеді."
+    narrativeMax = "Сен аңыздардың арасында жүресің. Дала саған бас иеді.",
+
+    syncWithHealthConnect = "Health Connect-пен синхрондау",
+    dataSources = "Дерек көздері",
+    sourceHealthConnect = "Health Connect",
+    sourceOnDeviceSensor = "Құрылғы сенсоры",
+    activeMax = "Белсенді (макс.)",
+    enableArrow = "Қосу ›",
+
+    hcRationaleTitle = "Health Connect",
+    hcRationaleBody = "Umaia Нұр беру және ойындағы күнделікті белсенділікті бақылау үшін Health Connect-тен қадам санын оқиды.",
+    hcStepsLabel = "Қадамдар",
+    hcStepsDesc = "Бүгінгі қадамдар — Нұр есептеу мен тапсырмаларды ашу үшін",
+    hcNoWriteAssurance = "Біз Health Connect-ке дерек жазбаймыз және денсаулық деректеріңді үшінші тұлғаларға бермейміз.",
+    gotIt = "Түсінікті",
+
+    welcomeTitle = "ҰМАЙ-ға қош келдің",
+    welcomeRuleWalk = "Нұр жинау үшін жүр",
+    welcomeRuleBuild = "Ру үшін құрылыстар сал",
+    welcomeRuleOracle = "Көріпкелмен сөйлесіп, өз рөліңді біл",
+    welcomeRuleLearn = "Дала даналығын үйрен",
+
+    welcomeBackHello = "Қайта оралуыңмен!",
+    daysAway = { days -> "Сен $days күн жоқ болдың" },
+    returningBonus = "Қайтып келу сыйы",
+    nurAmount = { n -> "$n Нұр" },
+
+    sessionComplete = "Сессия аяқталды",
+    questsCompletedLabel = "Тапсырмалар орындалды",
+    buildingsBuiltLabel = "Құрылыстар салынды",
+    populationLabel = "Халық",
+    closeAction = "Жабу",
+
+    tabCamp = "Лагерь",
+    tabBuild = "Құрылыс",
+    tabUmaia = "ҰМАЙ",
+
+    gameLoopWalkTitle = "Жүр",
+    gameLoopWalkDesc = "Қадамдар Нұр береді",
+    gameLoopNurTitle = "Нұр жина",
+    gameLoopNurDesc = "Ру үшін жарық",
+    gameLoopBuildTitle = "Сал",
+    gameLoopBuildDesc = "Адамдар үшін құрылыстар",
+    gameLoopGrowTitle = "Өс",
+    gameLoopGrowDesc = "Ру күшейе түседі"
 )

@@ -9,6 +9,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.umaia.android.domain.model.ResourceDef
 import app.umaia.android.domain.model.ResourceMap
+import app.umaia.android.ui.strings.LocalStrings
+import app.umaia.android.ui.strings.localizedName
 import app.umaia.android.ui.theme.Gold
 import app.umaia.android.ui.theme.TC
 
@@ -18,6 +20,7 @@ fun ResourceBar(
     defs: List<ResourceDef>,
     modifier: Modifier = Modifier
 ) {
+    val s = LocalStrings.current
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -33,7 +36,7 @@ fun ResourceBar(
                     color = Gold,
                     fontSize = 11.sp
                 )
-                Text(def.nameEn, color = TC.text, fontSize = 9.sp, maxLines = 1)
+                Text(def.localizedName(s.code), color = TC.text, fontSize = 9.sp, maxLines = 1)
             }
         }
     }

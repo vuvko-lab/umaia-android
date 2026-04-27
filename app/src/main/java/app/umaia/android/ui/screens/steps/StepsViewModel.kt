@@ -1,7 +1,5 @@
 package app.umaia.android.ui.screens.steps
 
-import android.content.Context
-import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.umaia.android.data.analytics.AnalyticsService
@@ -10,13 +8,11 @@ import app.umaia.android.data.local.GameStateStore
 import app.umaia.android.data.local.GpsSnapshot
 import app.umaia.android.data.local.StepPreferences
 import app.umaia.android.data.location.LocationTracker
-import app.umaia.android.data.sensor.GoogleFitStepTracker
 import app.umaia.android.domain.engine.stepsToNur
 import app.umaia.android.domain.model.StepMilestone
 import app.umaia.android.domain.model.allMilestones
 import app.umaia.android.domain.repository.StepRepository
 import app.umaia.android.domain.repository.StepTracker
-import com.google.android.gms.auth.api.signin.GoogleSignIn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -37,7 +33,11 @@ data class StepsUiState(
     val isPermissionGranted: Boolean = false,
     val offlineStepsCaught: Int = 0,
     val stepHistory: Map<String, Int> = emptyMap(),
-    val suspectedCheating: Boolean = false
+    val suspectedCheating: Boolean = false,
+    val healthConnectActive: Boolean = false,
+    // Debug — per-source step counts. -1 means "not authorized".
+    val debugHcSteps: Int = -1,
+    val debugSensorSteps: Int = -1
 )
 
 @HiltViewModel
@@ -48,7 +48,8 @@ class StepsViewModel @Inject constructor(
     private val stepPreferences: StepPreferences,
     private val gameStateStore: GameStateStore,
     private val analytics: AnalyticsService,
-    private val locationTracker: LocationTracker
+    private val locationTracker: LocationTracker,
+    private val stepBackfillService: app.umaia.android.data.sensor.StepBackfillService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -56,32 +57,92 @@ class StepsViewModel @Inject constructor(
             isPermissionGranted = stepTracker.isAuthorized,
             totalSteps = gamePreferences.totalSteps,
             stepHistory = gamePreferences.getStepHistory(),
-            suspectedCheating = stepPreferences.isSuspectedCheatingToday
+            suspectedCheating = stepPreferences.isSuspectedCheatingToday,
+            healthConnectActive = healthConnectAuthorized()
         )
     )
     val uiState: StateFlow<StepsUiState> = _uiState.asStateFlow()
+
+    init {
+        // Initial HC permission probe — populates the tracker's cached authorization
+        // state so the first composition reflects reality, not the default `false`.
+        viewModelScope.launch {
+            (stepTracker as? app.umaia.android.data.sensor.CompositeStepTracker)
+                ?.healthConnect?.refreshAuthorization()
+            doPermissionResult()
+        }
+    }
 
     private var observeJob: Job? = null
     private var submitJob: Job? = null
     private var pendingDelta = 0
 
-    /** Returns the Google Fit sign-in intent for fitness permissions. */
-    fun getSignInIntent(context: Context): Intent {
-        val tracker = stepTracker as GoogleFitStepTracker
-        val account = GoogleSignIn.getAccountForExtension(context, tracker.fitnessOptions)
-        return GoogleSignIn.getClient(context,
-            com.google.android.gms.auth.api.signin.GoogleSignInOptions.Builder()
-                .addExtension(tracker.fitnessOptions)
-                .build()
-        ).signInIntent
+    /** Re-evaluate authorization after any permission flow returns and start tracking if granted. */
+    fun onPermissionResult() {
+        viewModelScope.launch {
+            // Refresh HC cache before reading composite.isAuthorized.
+            (stepTracker as? app.umaia.android.data.sensor.CompositeStepTracker)
+                ?.healthConnect?.refreshAuthorization()
+            doPermissionResult()
+        }
     }
 
-    /** Called after the Google Fit sign-in result comes back. */
-    fun onFitPermissionResult() {
+    private fun doPermissionResult() {
         val granted = stepTracker.isAuthorized
-        _uiState.update { it.copy(isPermissionGranted = granted) }
+        _uiState.update { it.copy(
+            isPermissionGranted = granted,
+            healthConnectActive = healthConnectAuthorized()
+        ) }
         analytics.stepPermissionRequested(granted)
         if (granted) startTracking()
+    }
+
+    private fun healthConnectAuthorized(): Boolean = when (val t = stepTracker) {
+        is app.umaia.android.data.sensor.HealthConnectStepTracker -> t.isAuthorized
+        is app.umaia.android.data.sensor.CompositeStepTracker -> t.healthConnect.isAuthorized
+        else -> false
+    }
+
+    /** Returns (hc, sensor) daily step counts; -1 if that source is unauthorized. Debug only. */
+    private suspend fun readPerSourceForDebug(): Pair<Int, Int> {
+        val composite = stepTracker as? app.umaia.android.data.sensor.CompositeStepTracker
+        val hc = composite?.healthConnect?.let {
+            if (it.isAvailable && it.isAuthorized) runCatching { it.currentDailySteps() }.getOrDefault(-1) else -1
+        } ?: -1
+        val sensor = composite?.sensor?.let {
+            if (it.isAuthorized) runCatching { it.currentDailySteps() }.getOrDefault(-1) else -1
+        } ?: -1
+        return hc to sensor
+    }
+
+    fun isHealthConnectAvailable(): Boolean = when (val t = stepTracker) {
+        is app.umaia.android.data.sensor.HealthConnectStepTracker -> t.isAvailable
+        is app.umaia.android.data.sensor.CompositeStepTracker -> t.healthConnect.isAvailable
+        else -> false
+    }
+
+    fun healthConnectPermissions(): Set<String> = when (val t = stepTracker) {
+        is app.umaia.android.data.sensor.HealthConnectStepTracker -> t.permissions
+        is app.umaia.android.data.sensor.CompositeStepTracker -> t.healthConnect.permissions
+        else -> emptySet()
+    }
+
+    fun healthConnectPermissionContract(): androidx.activity.result.contract.ActivityResultContract<Set<String>, Set<String>> =
+        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()
+
+    /** Returns an Intent that opens Health Connect's main settings UI, or null if no
+     *  resolvable activity exists on the device. The user finds this app in HC's app list
+     *  and grants permissions there. We avoid `MANAGE_HEALTH_PERMISSIONS` because it
+     *  requires the system-only `GRANT_RUNTIME_PERMISSIONS` permission. */
+    fun healthConnectSettingsIntent(context: android.content.Context): android.content.Intent? {
+        val pm = context.packageManager
+        val candidates = listOf(
+            // Android 14+ — HC integrated into the Settings app
+            android.content.Intent("android.health.connect.action.HEALTH_HOME_SETTINGS"),
+            // Pre-14 standalone HC app
+            android.content.Intent("androidx.health.ACTION_HEALTH_CONNECT_SETTINGS")
+        )
+        return candidates.firstOrNull { it.resolveActivity(pm) != null }
     }
 
     fun onAppear() {
@@ -117,8 +178,9 @@ class StepsViewModel @Inject constructor(
         if ((now - lastTs) < 60_000L) return
 
         viewModelScope.launch {
-            val lastDate = Date(lastTs)
-            val offlineSteps = stepTracker.querySteps(lastDate, Date())
+            // Run the lazy backfill: HC for time-bucketed records, sensor delta as fallback.
+            // The bucket store is updated as a side-effect; we only need the total here.
+            val offlineSteps = stepBackfillService.backfill(now)
             if (offlineSteps > 0) {
                 _uiState.update { it.copy(offlineStepsCaught = offlineSteps) }
                 analytics.offlineStepsCaught(offlineSteps)
@@ -136,12 +198,15 @@ class StepsViewModel @Inject constructor(
             stepTracker.observeDailySteps().collect { steps ->
                 val previous = _uiState.value.dailySteps
                 val oldMilestones = getReachedMilestones(previous)
+                val (hc, sensor) = readPerSourceForDebug()
                 _uiState.update { it.copy(
                     dailySteps = steps,
                     nurFromSteps = stepsToNur(steps),
                     reachedMilestones = getReachedMilestones(steps),
                     nextMilestone = getNextMilestone(steps),
-                    isSensorAvailable = true
+                    isSensorAvailable = true,
+                    debugHcSteps = hc,
+                    debugSensorSteps = sensor
                 )}
                 val newMilestones = getReachedMilestones(steps)
                 if (newMilestones.size > oldMilestones.size) {
