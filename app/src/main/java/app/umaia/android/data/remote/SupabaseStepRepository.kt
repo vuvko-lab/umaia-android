@@ -5,11 +5,11 @@ import app.umaia.android.domain.repository.LeaderboardEntry
 import app.umaia.android.domain.repository.LeaderboardPeriod
 import app.umaia.android.domain.repository.StepRepository
 import app.umaia.android.domain.repository.StepSubmitResult
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -26,9 +26,9 @@ class SupabaseStepRepository @Inject constructor(private val db: PostgrestClient
         val user_id: String,
         val step_count: Int,
         val source: String,
-        val client_ts: String,
-        val session_id: String,
-        val app_version: String = "1.0",
+        val client_ts: String? = null,
+        val session_id: String? = null,
+        val app_version: String? = null,
         val suspected_cheating: Boolean? = null
     )
 
@@ -56,16 +56,19 @@ class SupabaseStepRepository @Inject constructor(private val db: PostgrestClient
         if (count <= 0) return StepSubmitResult(success = true, nurAwarded = 0, rejected = false, rejectReason = null)
 
         val uid = db.userId
-        val ts = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).format(Date())
+        // ISO-8601 UTC timestamp; explicit timezone avoids JVM-default-zone bugs.
+        val ts = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }.format(Date())
         val insert = StepInsert(
             user_id = uid,
             step_count = count,
             source = source,
             client_ts = ts,
             session_id = sessionId,
+            app_version = app.umaia.android.BuildConfig.VERSION_NAME,
             suspected_cheating = if (suspectedCheating) true else null
         )
-
         return runCatching {
             val row: StepRow = db.insertReturning(
                 value = insert,
@@ -85,23 +88,29 @@ class SupabaseStepRepository @Inject constructor(private val db: PostgrestClient
         }
     }
 
-    override suspend fun getLeaderboard(period: LeaderboardPeriod): LeaderboardData {
+    override suspend fun getLeaderboard(period: LeaderboardPeriod, companyCode: String?): LeaderboardData {
         val uid = db.userId
+        val params = buildMap<String, String> {
+            // Daily leaderboard follows Almaty local calendar day (server attributes step_date in Asia/Almaty).
+            if (period == LeaderboardPeriod.DAILY) put("p_date", almatyTodayString())
+            // Only include p_company when set — absence equals NULL = public-pool.
+            if (!companyCode.isNullOrBlank()) put("p_company", companyCode)
+        }
+        val function = when (period) {
+            LeaderboardPeriod.DAILY   -> "get_leaderboard_daily"
+            LeaderboardPeriod.WEEKLY  -> "get_leaderboard_weekly"
+            LeaderboardPeriod.MONTHLY -> "get_leaderboard_monthly"
+            LeaderboardPeriod.ALLTIME -> "get_leaderboard_alltime"
+        }
+
         val rows: List<LeaderboardRow> = runCatching<List<LeaderboardRow>> {
-            when (period) {
-                LeaderboardPeriod.DAILY -> {
-                    val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-                    db.rpc<List<LeaderboardRow>>("get_leaderboard_daily", mapOf("p_date" to today))
-                }
-                LeaderboardPeriod.WEEKLY -> db.rpc<List<LeaderboardRow>>("get_leaderboard_weekly")
-                LeaderboardPeriod.ALLTIME -> db.rpc<List<LeaderboardRow>>("get_leaderboard_alltime")
-            }
+            db.rpc<List<LeaderboardRow>>(function, params)
         }.getOrElse {
-            android.util.Log.e("UmaiaSteps", "getLeaderboard($period) FAILED: ${it.message}", it)
+            android.util.Log.e("UmaiaSteps", "getLeaderboard($period, $companyCode) FAILED: ${it.message}", it)
             emptyList()
         }
 
-        android.util.Log.d("UmaiaSteps", "getLeaderboard($period): ${rows.size} rows")
+        android.util.Log.d("UmaiaSteps", "getLeaderboard($period, $companyCode): ${rows.size} rows")
         val sorted = rows.sortedByDescending { it.total_steps }
         val myRow = sorted.firstOrNull { it.user_id == uid }
         val top50 = sorted.take(50)
@@ -115,7 +124,6 @@ class SupabaseStepRepository @Inject constructor(private val db: PostgrestClient
                 isMe = row.user_id == uid
             )
         }
-
         val myRank = myRow?.let { r ->
             if (r.rank > 0) r.rank else sorted.indexOfFirst { it.user_id == uid } + 1
         }
@@ -125,4 +133,12 @@ class SupabaseStepRepository @Inject constructor(private val db: PostgrestClient
             mySteps = myRow?.total_steps
         )
     }
+
+    /** Current date string (yyyy-MM-dd) in Asia/Almaty (UTC+5). All daily
+     *  step/leaderboard bookkeeping is anchored to Almaty local day so that
+     *  multiple devices in different zones still aggregate to the same row. */
+    private fun almatyTodayString(): String =
+        SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("Asia/Almaty")
+        }.format(Date())
 }

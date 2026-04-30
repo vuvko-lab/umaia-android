@@ -3,12 +3,11 @@ package app.umaia.android.ui.screens.steps
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.umaia.android.data.analytics.AnalyticsService
+import app.umaia.android.data.auth.AuthService
 import app.umaia.android.data.local.GamePreferences
-import app.umaia.android.data.local.GameStateStore
 import app.umaia.android.data.local.GpsSnapshot
 import app.umaia.android.data.local.StepPreferences
 import app.umaia.android.data.location.LocationTracker
-import app.umaia.android.domain.engine.stepsToNur
 import app.umaia.android.domain.model.StepMilestone
 import app.umaia.android.domain.model.allMilestones
 import app.umaia.android.domain.repository.StepRepository
@@ -18,14 +17,14 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import javax.inject.Inject
 
 data class StepsUiState(
     val dailySteps: Int = 0,
     val totalSteps: Int = 0,
+    val weeklySteps: Int = 0,
+    val monthlySteps: Int = 0,
+    val monthlyNur: Int = 0,
     val nurFromSteps: Int = 0,
     val reachedMilestones: List<StepMilestone> = emptyList(),
     val nextMilestone: StepMilestone? = null,
@@ -40,23 +39,26 @@ data class StepsUiState(
     val debugSensorSteps: Int = -1
 )
 
+/** Steps → Nur conversion: 100 steps = 1 Nur. */
+internal fun stepsToNur(steps: Int): Int = steps / 100
+
 @HiltViewModel
 class StepsViewModel @Inject constructor(
     private val stepTracker: StepTracker,
     private val gamePreferences: GamePreferences,
     private val stepRepository: StepRepository,
     private val stepPreferences: StepPreferences,
-    private val gameStateStore: GameStateStore,
     private val analytics: AnalyticsService,
     private val locationTracker: LocationTracker,
+    private val authService: AuthService,
     private val stepBackfillService: app.umaia.android.data.sensor.StepBackfillService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
         StepsUiState(
             isPermissionGranted = stepTracker.isAuthorized,
-            totalSteps = gamePreferences.totalSteps,
             stepHistory = gamePreferences.getStepHistory(),
+            totalSteps = gamePreferences.getStepHistory().values.sum() + gamePreferences.dailySteps,
             suspectedCheating = stepPreferences.isSuspectedCheatingToday,
             healthConnectActive = healthConnectAuthorized()
         )
@@ -70,6 +72,7 @@ class StepsViewModel @Inject constructor(
             (stepTracker as? app.umaia.android.data.sensor.CompositeStepTracker)
                 ?.healthConnect?.refreshAuthorization()
             doPermissionResult()
+            recomputeAggregates(_uiState.value.dailySteps)
         }
     }
 
@@ -80,7 +83,6 @@ class StepsViewModel @Inject constructor(
     /** Re-evaluate authorization after any permission flow returns and start tracking if granted. */
     fun onPermissionResult() {
         viewModelScope.launch {
-            // Refresh HC cache before reading composite.isAuthorized.
             (stepTracker as? app.umaia.android.data.sensor.CompositeStepTracker)
                 ?.healthConnect?.refreshAuthorization()
             doPermissionResult()
@@ -131,15 +133,11 @@ class StepsViewModel @Inject constructor(
         androidx.health.connect.client.PermissionController.createRequestPermissionResultContract()
 
     /** Returns an Intent that opens Health Connect's main settings UI, or null if no
-     *  resolvable activity exists on the device. The user finds this app in HC's app list
-     *  and grants permissions there. We avoid `MANAGE_HEALTH_PERMISSIONS` because it
-     *  requires the system-only `GRANT_RUNTIME_PERMISSIONS` permission. */
+     *  resolvable activity exists on the device. */
     fun healthConnectSettingsIntent(context: android.content.Context): android.content.Intent? {
         val pm = context.packageManager
         val candidates = listOf(
-            // Android 14+ — HC integrated into the Settings app
             android.content.Intent("android.health.connect.action.HEALTH_HOME_SETTINGS"),
-            // Pre-14 standalone HC app
             android.content.Intent("androidx.health.ACTION_HEALTH_CONNECT_SETTINGS")
         )
         return candidates.firstOrNull { it.resolveActivity(pm) != null }
@@ -151,6 +149,7 @@ class StepsViewModel @Inject constructor(
             reachedMilestones = getReachedMilestones(steps),
             nextMilestone = getNextMilestone(steps)
         )}
+        recomputeAggregates(steps)
     }
 
     fun startTracking() {
@@ -178,14 +177,16 @@ class StepsViewModel @Inject constructor(
         if ((now - lastTs) < 60_000L) return
 
         viewModelScope.launch {
-            // Run the lazy backfill: HC for time-bucketed records, sensor delta as fallback.
-            // The bucket store is updated as a side-effect; we only need the total here.
             val offlineSteps = stepBackfillService.backfill(now)
             if (offlineSteps > 0) {
                 _uiState.update { it.copy(offlineStepsCaught = offlineSteps) }
                 analytics.offlineStepsCaught(offlineSteps)
-                gamePreferences.addTotalSteps(offlineSteps)
-                _uiState.update { it.copy(totalSteps = gamePreferences.totalSteps) }
+                // Record the offline burst in today's history bucket so derived
+                // totals (week/month/total Nur) catch the gap.
+                val today = _uiState.value.dailySteps + offlineSteps
+                gamePreferences.dailySteps = today
+                gamePreferences.updateStepHistory(today)
+                recomputeAggregates(today)
                 stepRepository.submitSteps(offlineSteps, "offline")
             }
             stepPreferences.recordActive()
@@ -216,20 +217,49 @@ class StepsViewModel @Inject constructor(
                 if (delta > 0) {
                     pendingDelta += delta
                     gamePreferences.dailySteps = steps
-                    gamePreferences.addTotalSteps(delta)
                     gamePreferences.updateStepHistory(steps)
-                    _uiState.update { it.copy(
-                        totalSteps = gamePreferences.totalSteps,
-                        stepHistory = gamePreferences.getStepHistory()
-                    )}
-                    gameStateStore.update { state ->
-                        if (state.stepsSynced) state else state.copy(stepsSynced = true)
-                    }
+                    recomputeAggregates(steps)
+                    detectRewardUnlock()
                     checkGpsAtCheckpoint(previous, steps)
                 }
                 stepPreferences.recordActive()
             }
         }
+    }
+
+    /** Recompute weekly/monthly/total aggregates from stepHistory + today's pending. */
+    private fun recomputeAggregates(today: Int) {
+        val uid = authService.currentUserId
+        val history = gamePreferences.getStepHistory()
+        val totalSteps = history.values.sum() + today
+        val weekly = gamePreferences.weeklySteps(today)
+        val monthly = gamePreferences.monthlySteps(today)
+        val monthlyNur = uid?.let { gamePreferences.effectiveMonthlyNur(today, it) } ?: (monthly / 100)
+        _uiState.update { it.copy(
+            stepHistory = history,
+            totalSteps = totalSteps,
+            weeklySteps = weekly,
+            monthlySteps = monthly,
+            monthlyNur = monthlyNur
+        )}
+    }
+
+    /**
+     * Cross-tab unlock detection — fires once when monthly Nur first crosses
+     * the reward target. Runs every step batch regardless of which tab is on
+     * screen. Per-(rewardId, periodId, userId) dedupe in GamePreferences
+     * prevents the notification from re-firing if the user briefly drops
+     * below the target and crosses again.
+     */
+    private fun detectRewardUnlock() {
+        val uid = authService.currentUserId ?: return
+        val nur = _uiState.value.monthlyNur
+        if (nur < WinnerStatusViewModel.MONTHLY_REWARD_COST_NUR) return
+        val periodId = gamePreferences.currentMonthPeriodId
+        val rewardId = WinnerStatusViewModel.REWARD_ID
+        if (gamePreferences.isUnlockNotified(rewardId, periodId, uid)) return
+        gamePreferences.markUnlockNotified(rewardId, periodId, uid)
+        analytics.notifyRewardUnlocked(rewardId, periodId, uid, partner = "Umaia", item = "T-shirt")
     }
 
     private fun startSubmitLoop() {

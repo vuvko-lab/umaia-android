@@ -22,14 +22,10 @@
     <string name="onboarding_skip">Пропустить</string>
     <string name="onboarding_title_1">Добро пожаловать в Умайю</string>
     <string name="onboarding_body_1">На залитых солнцем степях, простирающихся до горизонта, кипит жизнь.</string>
-    <string name="onboarding_title_2">Дух Степи</string>
-    <string name="onboarding_body_2">Здесь живёт кочевое племя, оберегаемое УМАЙЯ — духом благополучия.</string>
-    <string name="onboarding_title_3">Твои шаги важны</string>
-    <string name="onboarding_body_3">Твои шаги наполняют мир светом и помогают кочевникам идти дальше.</string>
-    <string name="onboarding_title_4">Дом кочевника</string>
-    <string name="onboarding_body_4">Юрта стоит крепко против ветра — укрытие, построенное руками, которые не знают покоя.</string>
-    <string name="onboarding_title_5">Раскрой свою судьбу</string>
-    <string name="onboarding_body_5">Провидец читает твоё тело и раскрывает твою силу. Твоё здоровье определяет судьбу племени. Ходи, строй, расти и открой своё предназначение.</string>
+    <string name="onboarding_title_2">Зарабатывай Нур, получай награды</string>
+    <string name="onboarding_body_2">Каждый шаг приносит Нур. Достигни месячной цели по Нур, чтобы открыть настоящие награды от наших партнёров.</string>
+    <string name="onboarding_title_3">Разреши доступ к шагам</string>
+    <string name="onboarding_body_3">Разреши Умайе считывать твои шаги, чтобы мы могли их учитывать.</string>
 
     <string name="resource_food">Еда</string>
     <string name="resource_water">Вода</string>

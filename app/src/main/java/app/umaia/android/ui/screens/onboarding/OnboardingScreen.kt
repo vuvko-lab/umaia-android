@@ -34,12 +34,12 @@ private data class OnboardingPage(
     val showLogo: Boolean = false
 )
 
+// v1.3 trims onboarding to 3 cards: motivation → rewards → permission.
+// Pages 4 & 5 ("Mother Umaia", "wisdom test / weekly goals") are dropped.
 private val pages = listOf(
     OnboardingPage(R.drawable.onboarding1, R.string.onboarding_title_1, R.string.onboarding_body_1, showLogo = true),
     OnboardingPage(R.drawable.onboarding2, R.string.onboarding_title_2, R.string.onboarding_body_2),
     OnboardingPage(R.drawable.onboarding3, R.string.onboarding_title_3, R.string.onboarding_body_3),
-    OnboardingPage(R.drawable.onboarding5, R.string.onboarding_title_4, R.string.onboarding_body_4),
-    OnboardingPage(R.drawable.onboarding4, R.string.onboarding_title_5, R.string.onboarding_body_5),
 )
 
 @Composable

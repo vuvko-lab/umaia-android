@@ -3,9 +3,7 @@ package app.umaia.android.ui.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.DirectionsWalk
-import androidx.compose.material.icons.filled.Eco
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.rounded.Article
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,28 +20,29 @@ private data class NavItem(
     val icon: ImageVector
 )
 
-private val navItems = listOf(
-    NavItem(Screen.Dashboard, { it.tabTasks },   Icons.Rounded.Article),
-    NavItem(Screen.Steps,     { it.tabSteps },   Icons.Filled.DirectionsWalk),
-    NavItem(Screen.Nutrition, { it.tabFood },    Icons.Filled.Eco),
-    NavItem(Screen.Oracle,    { it.tabSeer },    Icons.Filled.AutoAwesome),
-    NavItem(Screen.Profile,   { it.tabProfile }, Icons.Filled.Star),
-)
-
 @Composable
-fun BottomNavBar(navController: NavController) {
+fun BottomNavBar(navController: NavController, showSeer: Boolean) {
     val backStack by navController.currentBackStackEntryAsState()
     val current = backStack?.destination?.route
     val strings = LocalStrings.current
 
+    // Seer tab is only rendered for company-cohort members. Public-pool users
+    // see Walk + UMAIA only — keeps the visible feature set minimal for the
+    // wider audience.
+    val items = buildList {
+        add(NavItem(Screen.Steps, { it.tabSteps }, Icons.Filled.DirectionsWalk))
+        if (showSeer) add(NavItem(Screen.Oracle, { it.tabSeer }, Icons.Filled.AutoAwesome))
+        add(NavItem(Screen.Profile, { it.tabUmaia }, Icons.Filled.Star))
+    }
+
     NavigationBar(containerColor = TC.bg, contentColor = Gold) {
-        navItems.forEach { item ->
+        items.forEach { item ->
             NavigationBarItem(
                 selected = current == item.screen.route,
                 onClick = {
                     if (current != item.screen.route) {
                         navController.navigate(item.screen.route) {
-                            popUpTo(Screen.Dashboard.route) { saveState = true }
+                            popUpTo(Screen.Steps.route) { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }

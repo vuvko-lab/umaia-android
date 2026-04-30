@@ -1,10 +1,13 @@
 package app.umaia.android.ui.navigation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -14,35 +17,37 @@ import app.umaia.android.data.auth.AuthState
 import app.umaia.android.data.local.GamePreferences
 import app.umaia.android.ui.screens.auth.AuthViewModel
 import app.umaia.android.ui.screens.auth.LoginScreen
-import app.umaia.android.ui.screens.dashboard.DashboardScreen
-import app.umaia.android.ui.screens.nutrition.NutritionScreen
+import app.umaia.android.ui.screens.companycode.CompanyCodeScreen
 import app.umaia.android.ui.screens.onboarding.OnboardingScreen
 import app.umaia.android.ui.screens.oracle.OracleScreen
 import app.umaia.android.ui.screens.profile.ProfileScreen
 import app.umaia.android.ui.screens.steps.StepsScreen
+import app.umaia.android.ui.theme.Gold
 import app.umaia.android.ui.theme.TC
-import javax.inject.Inject
 
 @Composable
 fun NavGraph(
     navController: NavHostController = rememberNavController(),
     gamePrefs: GamePreferences,
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel = hiltViewModel(),
+    profileViewModel: app.umaia.android.ui.screens.profile.ProfileViewModel = hiltViewModel()
 ) {
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
+    val profileState by profileViewModel.uiState.collectAsStateWithLifecycle()
 
     val startDest = when {
         !gamePrefs.onboardingDone -> Screen.Onboarding.route
-        authState is AuthState.Authenticated -> Screen.Dashboard.route
+        authState is AuthState.Authenticated -> Screen.CompanyGate.route
         else -> Screen.Login.route
     }
 
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+    val showSeer = profileState.profile?.isCompanyMember == true
 
     Scaffold(
         bottomBar = {
             if (currentRoute in BOTTOM_NAV_ROUTES) {
-                BottomNavBar(navController)
+                BottomNavBar(navController, showSeer = showSeer)
             }
         }
     ) { padding ->
@@ -65,24 +70,46 @@ fun NavGraph(
 
             composable(Screen.Login.route) {
                 LoginScreen(onLoggedIn = {
-                    navController.navigate(Screen.Dashboard.route) {
+                    navController.navigate(Screen.CompanyGate.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 })
             }
 
-            composable(Screen.Dashboard.route) {
-                DashboardScreen(
-                    onNavigateToOracle = { navController.navigate(Screen.Oracle.route) }
+            // Loading bridge: refresh the profile, then route to CompanyCode
+            // (when the user hasn't picked a cohort yet) or Steps.
+            composable(Screen.CompanyGate.route) {
+                CompanyGateRoute(
+                    gamePrefs = gamePrefs,
+                    profileViewModel = profileViewModel,
+                    onShowCompanyCode = {
+                        navController.navigate(Screen.CompanyCode.route) {
+                            popUpTo(Screen.CompanyGate.route) { inclusive = true }
+                        }
+                    },
+                    onShowSteps = {
+                        navController.navigate(Screen.Steps.route) {
+                            popUpTo(Screen.CompanyGate.route) { inclusive = true }
+                        }
+                    }
                 )
             }
 
-            composable(Screen.Steps.route)     { StepsScreen() }
-            composable(Screen.Nutrition.route) { NutritionScreen() }
+            composable(Screen.CompanyCode.route) {
+                CompanyCodeScreen(
+                    onDone = {
+                        navController.navigate(Screen.Steps.route) {
+                            popUpTo(Screen.CompanyCode.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            composable(Screen.Steps.route) { StepsScreen() }
 
             composable(Screen.Oracle.route) {
                 OracleScreen(onComplete = {
-                    navController.navigate(Screen.Dashboard.route) {
+                    navController.navigate(Screen.Steps.route) {
                         popUpTo(Screen.Oracle.route) { inclusive = true }
                     }
                 })
@@ -92,7 +119,7 @@ fun NavGraph(
         }
     }
 
-    // Auth-gate navigation — mirrors iOS AuthGatedView
+    // Auth-gate navigation — when auth state flips, snap to the right top-level.
     LaunchedEffect(authState) {
         if (!gamePrefs.onboardingDone) return@LaunchedEffect
         when (authState) {
@@ -104,12 +131,37 @@ fun NavGraph(
             is AuthState.Authenticated -> {
                 val route = navController.currentDestination?.route
                 if (route == Screen.Login.route || route == null) {
-                    navController.navigate(Screen.Dashboard.route) {
+                    navController.navigate(Screen.CompanyGate.route) {
                         popUpTo(0) { inclusive = true }
                     }
                 }
             }
             else -> {}
         }
+    }
+}
+
+@Composable
+private fun CompanyGateRoute(
+    gamePrefs: GamePreferences,
+    profileViewModel: app.umaia.android.ui.screens.profile.ProfileViewModel,
+    onShowCompanyCode: () -> Unit,
+    onShowSteps: () -> Unit
+) {
+    LaunchedEffect(Unit) { profileViewModel.load() }
+    val state by profileViewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(state.profile) {
+        val p = state.profile ?: return@LaunchedEffect
+        // Already in a cohort, OR user has explicitly skipped — go to Steps.
+        if (p.companyCode != null || gamePrefs.isCompanyChoiceMade(p.userId)) {
+            onShowSteps()
+        } else {
+            onShowCompanyCode()
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(TC.bg), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(color = Gold)
     }
 }

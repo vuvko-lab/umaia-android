@@ -82,4 +82,34 @@ class AnalyticsService @Inject constructor(@ApplicationContext ctx: Context) {
         PostHog.capture("leaderboard_period_changed", properties = mapOf("period" to period))
     fun stepTrackerConnected(tracker: String) =
         PostHog.capture("step_tracker_connected", properties = mapOf("tracker" to tracker))
+
+    /** Fired the first time the user crosses the monthly Nur target for a
+     *  given (rewardId, periodId, userId). Local-only dedupe lives in
+     *  [GamePreferences.markUnlockNotified]. */
+    fun notifyRewardUnlocked(rewardId: String, periodId: String, userId: String, partner: String, item: String) {
+        PostHog.capture(
+            "reward_unlocked",
+            properties = mapOf(
+                "reward_id" to rewardId,
+                "period_id" to periodId,
+                "user_id" to userId,
+                "partner" to partner,
+                "item" to item
+            )
+        )
+    }
+
+    fun rewardClaimSubmitted(rewardId: String, periodId: String, deliveryMethod: String) =
+        PostHog.capture(
+            "reward_claim_submitted",
+            properties = mapOf(
+                "reward_id" to rewardId,
+                "period_id" to periodId,
+                "delivery_method" to deliveryMethod
+            )
+        )
+
+    fun companyCodeJoined(code: String) =
+        PostHog.capture("company_code_joined", properties = mapOf("code" to code))
+    fun companyCodeSkipped() = PostHog.capture("company_code_skipped")
 }

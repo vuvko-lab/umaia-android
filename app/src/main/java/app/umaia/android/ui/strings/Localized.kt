@@ -1,10 +1,7 @@
 package app.umaia.android.ui.strings
 
-import app.umaia.android.domain.model.BuildingDef
 import app.umaia.android.domain.model.OracleOption
 import app.umaia.android.domain.model.OracleQuestion
-import app.umaia.android.domain.model.QuestDef
-import app.umaia.android.domain.model.ResourceDef
 import app.umaia.android.domain.model.StepMilestone
 
 /**
@@ -21,14 +18,6 @@ private fun pick(code: String, en: String, ru: String, kk: String): String = whe
     "kk" -> if (kk.isNotBlank()) kk else ru
     else -> ru // "ru" or any unknown code falls back to Russian
 }
-
-fun QuestDef.localizedName(code: String): String = pick(code, nameEn, nameRu, nameKk)
-fun QuestDef.localizedDesc(code: String): String = pick(code, descEn, descRu, descKk)
-
-fun BuildingDef.localizedName(code: String): String = pick(code, nameEn, nameRu, nameKk)
-fun BuildingDef.localizedDesc(code: String): String = pick(code, descEn, descRu, descKk)
-
-fun ResourceDef.localizedName(code: String): String = pick(code, nameEn, nameRu, nameKk)
 
 fun StepMilestone.localizedName(code: String): String = pick(code, nameEn, nameRu, nameKk)
 fun StepMilestone.localizedDesc(code: String): String = pick(code, descEn, descRu, descKk)

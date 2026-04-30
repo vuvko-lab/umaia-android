@@ -32,14 +32,10 @@
     <string name="onboarding_skip">Skip</string>
     <string name="onboarding_title_1">Welcome to UMAIA</string>
     <string name="onboarding_body_1">On the sun-drenched steppes stretching to the horizon, life thrives.</string>
-    <string name="onboarding_title_2">The Spirit of the Steppe</string>
-    <string name="onboarding_body_2">A nomadic tribe lives here, watched over by UMAIA — the spirit of well-being.</string>
-    <string name="onboarding_title_3">Your Steps Matter</string>
-    <string name="onboarding_body_3">Your steps fill the world with light and help the nomads keep going.</string>
-    <string name="onboarding_title_4">The Nomad\'s Home</string>
-    <string name="onboarding_body_4">The yurt stands strong against the wind — a shelter built by hands that never rest.</string>
-    <string name="onboarding_title_5">Discover Your Destiny</string>
-    <string name="onboarding_body_5">The Seer reads your body and reveals your strength. Your health determines the fate of the tribe. Walk, build, grow, and discover your purpose.</string>
+    <string name="onboarding_title_2">Earn Nur, win rewards</string>
+    <string name="onboarding_body_2">Every step earns Nur. Reach the monthly Nur goal to unlock real rewards from our partners.</string>
+    <string name="onboarding_title_3">Allow step access</string>
+    <string name="onboarding_body_3">Allow Umaia to read your steps so we can count them.</string>
 
     <!-- Resources -->
     <string name="resource_food">Food</string>

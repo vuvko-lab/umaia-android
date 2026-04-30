@@ -60,7 +60,8 @@ fun ProfileScreen(
                 name = state.profile?.fullName,
                 email = state.email,
                 nur = state.liveNur,
-                streak = state.profile?.currentStreak ?: 0
+                streak = state.profile?.currentStreak ?: 0,
+                companyName = state.profile?.companyName
             )
 
             // Role panel
@@ -224,7 +225,7 @@ internal fun HeroSection() {
 // ── Profile Card ──────────────────────────────────────────────────────────────
 
 @Composable
-internal fun ProfileCard(name: String?, email: String, nur: Int, streak: Int) {
+internal fun ProfileCard(name: String?, email: String, nur: Int, streak: Int, companyName: String? = null) {
     val s = LocalStrings.current
     val season = when (Calendar.getInstance().get(Calendar.MONTH) + 1) {
         in 3..5 -> s.seasonSpring
@@ -248,6 +249,21 @@ internal fun ProfileCard(name: String?, email: String, nur: Int, streak: Int) {
             Column {
                 Text(name ?: s.nomadFallback, color = TC.text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Text(email, color = TC.muted, fontSize = 10.sp)
+                companyName?.let { c ->
+                    Spacer(Modifier.height(4.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Gold.copy(alpha = 0.15f),
+                    ) {
+                        Text(
+                            "🏢 ${s.companyMember(c)}",
+                            color = Gold,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

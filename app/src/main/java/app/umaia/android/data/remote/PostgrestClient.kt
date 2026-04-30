@@ -126,6 +126,31 @@ class PostgrestClient @Inject constructor(@PublishedApi internal val authService
         client.newCall(request).await().checkSuccess()
     }
 
+    /** UPSERT and return the resulting row decoded as [Out]. Uses
+     *  `Prefer: resolution=merge-duplicates,return=representation` and
+     *  `Accept: application/vnd.pgrst.object+json` so PostgREST returns a
+     *  single object (not an array) — matches the iOS implementation. */
+    suspend inline fun <reified In : Any, reified Out> upsertReturning(
+        value: In,
+        table: String,
+        onConflict: String,
+        columns: String = "*"
+    ): Out = withContext(Dispatchers.IO) {
+        val urlBuilder = "${authService.baseUrl}/rest/v1/$table".toHttpUrl().newBuilder()
+            .addQueryParameter("on_conflict", onConflict)
+            .addQueryParameter("select", columns)
+        val body = json.encodeToString(kotlinx.serialization.serializer<In>(), value)
+        val request = Request.Builder()
+            .url(urlBuilder.build())
+            .apply { authService.authenticatedHeaders().forEach { (k, v) -> addHeader(k, v) } }
+            .addHeader("Prefer", "resolution=merge-duplicates,return=representation")
+            .addHeader("Accept", "application/vnd.pgrst.object+json")
+            .post(body.toRequestBody("application/json".toMediaType()))
+            .build()
+        val responseText = client.newCall(request).await().checkSuccess()
+        json.decodeFromString<Out>(responseText)
+    }
+
     // ── PATCH ─────────────────────────────────────────────────────────────────
 
     suspend inline fun <reified T : Any> update(

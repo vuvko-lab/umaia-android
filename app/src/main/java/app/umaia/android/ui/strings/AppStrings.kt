@@ -232,7 +232,48 @@ data class AppStrings(
     val gameLoopBuildTitle: String,
     val gameLoopBuildDesc: String,
     val gameLoopGrowTitle: String,
-    val gameLoopGrowDesc: String
+    val gameLoopGrowDesc: String,
+
+    // ── Company code (v1.3) ───────────────────────────────────────────────────
+    val companyCodeJoinTitle: String,
+    val companyCodeBody: String,
+    val companyCodeFieldLabel: String,
+    val companyCodeJoin: String,
+    val companyCodeSkip: String,
+    val companyCodeInvalid: String,
+    val companyMember: (String) -> String,
+
+    // ── Reward podium / monthly rewards (v1.3) ────────────────────────────────
+    val periodMonth: String,
+    val nurMonthlyHeader: String,
+    val earnMoreThisMonth: String,
+    val morePartnersComingSoon: String,
+    val congratsWinner: (Int) -> String,
+    val congratsTargetHitNotFull: (Int) -> String,
+    val congratsPodiumFull: String,
+    val claimBeforeNextMonth: String,
+    val weeklyStandingRank: (Int) -> String,
+    val weeklyResets: String,
+    val nurThisWeek: String,
+
+    // ── Reward claim sheet (v1.3) ─────────────────────────────────────────────
+    val rewardClaimTitle: String,
+    val rewardClaimFullName: String,
+    val rewardClaimPhone: String,
+    val rewardClaimSize: String,
+    val rewardClaimDeliveryPickup: String,
+    val rewardClaimDeliveryShip: String,
+    val rewardClaimCity: String,
+    val rewardClaimAddress: String,
+    val rewardClaimNotes: String,
+    val rewardClaimSubmit: String,
+    val rewardClaimSubmitted: String,
+
+    // ── v1.3 — Oracle ─────────────────────────────────────────────────────────
+    val oracleReturnToMain: String,
+    val oracleHealthyHabits: (Double) -> String,
+    val oracleRiskFactorsPill: (Double) -> String,
+    val oracleFoodsRichIn: (String) -> String,
 )
 
 // ── CompositionLocal ──────────────────────────────────────────────────────────
@@ -368,12 +409,10 @@ Then from the heart of the first dawn, Umaia arose. She was neither flame nor fr
 Umaia proclaimed the First Law: "That which does not move, does not live." With those words the wind stirred the grass, the herds began to run, and the Nomads took their first steps across the steppe.
 
 Now you are part of this movement. Your motion is not just exercise. It is the sacred duty that keeps the world of the Nomads alive.""",
-    fourPillarsTitle = "The Four Pillars",
+    fourPillarsTitle = "Core Principles",
     pillars = listOf(
-        Triple("🌱", "Plant & Grow", "Seeds need the vibration of footsteps to sprout. Your movement awakens the earth."),
-        Triple("🏕️", "Build & Shelter", "A yurt rises only when hands are busy. Strength comes from daily effort."),
-        Triple("👣", "Walk & Move", "Every step generates Nur energy that sustains the world. The path itself is the destination."),
-        Triple("✨", "Nur & Light", "Nur is the sacred energy of life. It flows when you move and fades when you stop.")
+        Triple("👣", "Walk & Move", "Every step generates Nur energy. The path itself is the destination."),
+        Triple("✨", "Nur & Light", "Nur is the energy of vitality. It flows when you move and fades when you stop.")
     ),
     leaveTheSteppe = "Leave the Steppe",
     deleteAccount = "Delete Account",
@@ -460,7 +499,47 @@ Now you are part of this movement. Your motion is not just exercise. It is the s
     gameLoopBuildTitle = "Build",
     gameLoopBuildDesc = "Structures for your people",
     gameLoopGrowTitle = "Grow",
-    gameLoopGrowDesc = "Your tribe becomes stronger"
+    gameLoopGrowDesc = "Your tribe becomes stronger",
+
+    // ── v1.3 — Company code ───────────────────────────────────────────────────
+    companyCodeJoinTitle = "Join your team",
+    companyCodeBody = "If your company gave you an invite code, enter it below to join your colleagues' leaderboard. You can also skip and stay in the public pool.",
+    companyCodeFieldLabel = "Invite code",
+    companyCodeJoin = "Join",
+    companyCodeSkip = "Skip — stay public",
+    companyCodeInvalid = "We don't recognize that code. Double-check with your HR team.",
+    companyMember = { name -> "$name member" },
+
+    // ── v1.3 — Monthly rewards ────────────────────────────────────────────────
+    periodMonth = "This Month",
+    nurMonthlyHeader = "Nur this month",
+    earnMoreThisMonth = "How to earn more Nur this month",
+    morePartnersComingSoon = "More partners coming soon",
+    congratsWinner = { rank -> "You're rank $rank of 3" },
+    congratsTargetHitNotFull = { taken -> "$taken of 3 podium spots taken — keep walking, the podium isn't full yet." },
+    congratsPodiumFull = "Podium full this month — see you on next month's podium.",
+    claimBeforeNextMonth = "Claim before next month",
+    weeklyStandingRank = { rank -> "Rank #$rank" },
+    weeklyResets = "Resets every Monday",
+    nurThisWeek = "Nur this week",
+
+    // ── v1.3 — Claim sheet ────────────────────────────────────────────────────
+    rewardClaimTitle = "Claim your T-shirt",
+    rewardClaimFullName = "Full name",
+    rewardClaimPhone = "Phone",
+    rewardClaimSize = "Size",
+    rewardClaimDeliveryPickup = "Pick up at Umaia Store",
+    rewardClaimDeliveryShip = "Ship to my address",
+    rewardClaimCity = "City",
+    rewardClaimAddress = "Address",
+    rewardClaimNotes = "Notes (optional)",
+    rewardClaimSubmit = "Submit claim",
+    rewardClaimSubmitted = "Claim submitted! Our team will reach out shortly.",
+
+    oracleReturnToMain = "Return to Main page",
+    oracleHealthyHabits = { y -> "✚ Healthy habits +${"%.1f".format(y)}y" },
+    oracleRiskFactorsPill = { y -> "✖ Risk factors ${"%.1f".format(y)}y" },
+    oracleFoodsRichIn = { nutrient -> "Foods rich in $nutrient:" },
 )
 
 // ── Russian ───────────────────────────────────────────────────────────────────
@@ -592,12 +671,10 @@ val RuStrings = AppStrings(
 Умайя провозгласила Первый Закон: «То, что не движется, не живёт». При этих словах ветер всколыхнул траву, табуны пустились в бег, и Кочевники сделали первые шаги по степи.
 
 Теперь вы часть этого движения. Ваш шаг — не просто упражнение. Это священный долг, который хранит мир Кочевников живым.""",
-    fourPillarsTitle = "Четыре Столпа",
+    fourPillarsTitle = "Главные принципы",
     pillars = listOf(
-        Triple("🌱", "Сади и Расти", "Семенам нужна вибрация шагов, чтобы прорасти. Ваше движение пробуждает землю."),
-        Triple("🏕️", "Строй и Защищай", "Юрта поднимается лишь там, где заняты руки. Сила приходит через ежедневный труд."),
-        Triple("👣", "Иди и Двигайся", "Каждый шаг создаёт энергию Нур, поддерживающую мир. Сам путь — и есть цель."),
-        Triple("✨", "Нур и Свет", "Нур — священная энергия жизни. Она течёт, когда вы движетесь, и гаснет, когда вы останавливаетесь.")
+        Triple("👣", "Иди и Двигайся", "Каждый шаг создаёт энергию Нур. Сам путь — и есть цель."),
+        Triple("✨", "Нур и Свет", "Нур — энергия жизни. Она течёт, когда вы движетесь, и угасает, когда вы останавливаетесь.")
     ),
     leaveTheSteppe = "Покинуть степь",
     deleteAccount = "Удалить аккаунт",
@@ -691,7 +768,47 @@ val RuStrings = AppStrings(
     gameLoopBuildTitle = "Строй",
     gameLoopBuildDesc = "Постройки для людей",
     gameLoopGrowTitle = "Развивайся",
-    gameLoopGrowDesc = "Племя становится сильнее"
+    gameLoopGrowDesc = "Племя становится сильнее",
+
+    // ── v1.3 — Company code ───────────────────────────────────────────────────
+    companyCodeJoinTitle = "Присоединиться к команде",
+    companyCodeBody = "Если ваша компания дала вам код приглашения, введите его, чтобы попасть в рейтинг коллег. Можно пропустить и остаться в общем пуле.",
+    companyCodeFieldLabel = "Код приглашения",
+    companyCodeJoin = "Присоединиться",
+    companyCodeSkip = "Пропустить — остаться в общем пуле",
+    companyCodeInvalid = "Мы не узнаём этот код. Проверьте у HR-команды.",
+    companyMember = { name -> "Сотрудник $name" },
+
+    // ── v1.3 — Monthly rewards ────────────────────────────────────────────────
+    periodMonth = "Месяц",
+    nurMonthlyHeader = "Нур за этот месяц",
+    earnMoreThisMonth = "Как заработать больше Нур в этом месяце",
+    morePartnersComingSoon = "Скоро добавим новых партнёров",
+    congratsWinner = { rank -> "Вы $rank-е из 3" },
+    congratsTargetHitNotFull = { taken -> "$taken из 3 призовых мест занято — продолжайте идти, пьедестал ещё не закрыт." },
+    congratsPodiumFull = "Пьедестал на этот месяц закрыт — увидимся в следующем месяце.",
+    claimBeforeNextMonth = "Заберите до конца месяца",
+    weeklyStandingRank = { rank -> "Место #$rank" },
+    weeklyResets = "Сбрасывается каждый понедельник",
+    nurThisWeek = "Нур за неделю",
+
+    // ── v1.3 — Claim sheet ────────────────────────────────────────────────────
+    rewardClaimTitle = "Получить футболку",
+    rewardClaimFullName = "ФИО",
+    rewardClaimPhone = "Телефон",
+    rewardClaimSize = "Размер",
+    rewardClaimDeliveryPickup = "Забрать в магазине Umaia",
+    rewardClaimDeliveryShip = "Доставить по адресу",
+    rewardClaimCity = "Город",
+    rewardClaimAddress = "Адрес",
+    rewardClaimNotes = "Комментарий (необязательно)",
+    rewardClaimSubmit = "Отправить заявку",
+    rewardClaimSubmitted = "Заявка отправлена! Скоро свяжемся.",
+
+    oracleReturnToMain = "Вернуться на главную",
+    oracleHealthyHabits = { y -> "✚ Полезные привычки +${"%.1f".format(y)} лет" },
+    oracleRiskFactorsPill = { y -> "✖ Факторы риска ${"%.1f".format(y)} лет" },
+    oracleFoodsRichIn = { nutrient -> "Продукты, богатые $nutrient:" },
 )
 
 // ── Kazakh ───────────────────────────────────────────────────────────────────
@@ -823,12 +940,10 @@ val KkStrings = AppStrings(
 Ұмай ана Бірінші Заңды жариялады: «Қозғалмайтын нәрсе тірі емес». Сол сөздермен жел шөпті желбіретті, жылқылар шабуылға шықты, және Көшпенділер дала бойынша алғашқы қадамдарын жасады.
 
 Енді сен осы қозғалыстың бір бөлігісің. Сенің қозғалысың тек жаттығу емес. Бұл Көшпенділер әлемін тірі ұстайтын қасиетті борыш.""",
-    fourPillarsTitle = "Төрт тірек",
+    fourPillarsTitle = "Негізгі қағидалар",
     pillars = listOf(
-        Triple("🌱", "Ек және Өсір", "Дәндерге өну үшін қадамдардың дірілі қажет. Сенің қозғалысың жерді оятады."),
-        Triple("🏕️", "Сал және Қорға", "Киіз үй тек қолдар жұмыс істегенде көтеріледі. Күш күнделікті еңбектен келеді."),
-        Triple("👣", "Жүр және Қозғал", "Әр қадам әлемді ұстайтын Нұр энергиясын тудырады. Жолдың өзі — мақсат."),
-        Triple("✨", "Нұр және Жарық", "Нұр — өмірдің қасиетті энергиясы. Қозғалғанда ағады, тоқтағанда сөнеді.")
+        Triple("👣", "Жүр және Қозғал", "Әр қадам Нұр энергиясын тудырады. Жолдың өзі — мақсат."),
+        Triple("✨", "Нұр және Жарық", "Нұр — өмір энергиясы. Қозғалғанда ағады, тоқтағанда сөнеді.")
     ),
     leaveTheSteppe = "Даладан шығу",
     deleteAccount = "Аккаунтты жою",
@@ -915,5 +1030,45 @@ val KkStrings = AppStrings(
     gameLoopBuildTitle = "Сал",
     gameLoopBuildDesc = "Адамдар үшін құрылыстар",
     gameLoopGrowTitle = "Өс",
-    gameLoopGrowDesc = "Ру күшейе түседі"
+    gameLoopGrowDesc = "Ру күшейе түседі",
+
+    // ── v1.3 — Company code ───────────────────────────────────────────────────
+    companyCodeJoinTitle = "Командаңа қосыл",
+    companyCodeBody = "Компанияңыз шақыру коды берсе, әріптестерің тізіміне қосылу үшін енгізіңіз. Өткізіп жіберіп, жалпы пулда қалуға болады.",
+    companyCodeFieldLabel = "Шақыру коды",
+    companyCodeJoin = "Қосылу",
+    companyCodeSkip = "Өткізу — жалпы пулда қалу",
+    companyCodeInvalid = "Бұл кодты танымаймыз. HR-командадан тексеріңіз.",
+    companyMember = { name -> "$name қызметкері" },
+
+    // ── v1.3 — Monthly rewards ────────────────────────────────────────────────
+    periodMonth = "Ай",
+    nurMonthlyHeader = "Осы айдағы Нұр",
+    earnMoreThisMonth = "Осы айда көбірек Нұр жинау жолдары",
+    morePartnersComingSoon = "Жуырда жаңа серіктестер қосылады",
+    congratsWinner = { rank -> "Сіз 3-тің $rank-ы" },
+    congratsTargetHitNotFull = { taken -> "3 жүлделі орынның $taken-i алынды — пьедестал әлі жабылған жоқ, жүре беріңіз." },
+    congratsPodiumFull = "Пьедестал осы айға толы — келесі айда көрісеміз.",
+    claimBeforeNextMonth = "Ай аяқталғанша алыңыз",
+    weeklyStandingRank = { rank -> "Орын #$rank" },
+    weeklyResets = "Әр дүйсенбіде жаңарады",
+    nurThisWeek = "Осы аптадағы Нұр",
+
+    // ── v1.3 — Claim sheet ────────────────────────────────────────────────────
+    rewardClaimTitle = "Футболканы алу",
+    rewardClaimFullName = "Толық аты-жөні",
+    rewardClaimPhone = "Телефон",
+    rewardClaimSize = "Өлшем",
+    rewardClaimDeliveryPickup = "Umaia дүкенінен алу",
+    rewardClaimDeliveryShip = "Мекенжай бойынша жеткізу",
+    rewardClaimCity = "Қала",
+    rewardClaimAddress = "Мекенжай",
+    rewardClaimNotes = "Ескертпе (міндетті емес)",
+    rewardClaimSubmit = "Өтінім жіберу",
+    rewardClaimSubmitted = "Өтінім жіберілді! Жуырда хабарласамыз.",
+
+    oracleReturnToMain = "Басты бетке оралу",
+    oracleHealthyHabits = { y -> "✚ Пайдалы әдеттер +${"%.1f".format(y)} жыл" },
+    oracleRiskFactorsPill = { y -> "✖ Қауіп факторлары ${"%.1f".format(y)} жыл" },
+    oracleFoodsRichIn = { nutrient -> "$nutrient-ке бай тағамдар:" },
 )

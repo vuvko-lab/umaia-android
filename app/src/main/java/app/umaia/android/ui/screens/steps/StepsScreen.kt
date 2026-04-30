@@ -45,9 +45,24 @@ import java.util.*
 @Composable
 fun StepsScreen(
     viewModel: StepsViewModel = hiltViewModel(),
-    leaderboardViewModel: LeaderboardViewModel = hiltViewModel()
+    leaderboardViewModel: LeaderboardViewModel = hiltViewModel(),
+    winnerViewModel: WinnerStatusViewModel = hiltViewModel(),
+    profileViewModel: app.umaia.android.ui.screens.profile.ProfileViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
+    val winnerState by winnerViewModel.uiState.collectAsState()
+    val leaderboardState by leaderboardViewModel.uiState.collectAsState()
+    val profileState by profileViewModel.uiState.collectAsState()
+    LaunchedEffect(Unit) { profileViewModel.load() }
+    // When the local monthly Nur first crosses the target, refresh the
+    // server-authoritative podium status so the Walk tab UI flips through
+    // CongratsBanner states accurately.
+    LaunchedEffect(state.monthlyNur >= WinnerStatusViewModel.MONTHLY_REWARD_COST_NUR) {
+        if (state.monthlyNur >= WinnerStatusViewModel.MONTHLY_REWARD_COST_NUR) {
+            winnerViewModel.refresh()
+        }
+    }
+    var showClaimSheet by remember { mutableStateOf(false) }
     var showLeaderboard by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -103,7 +118,12 @@ fun StepsScreen(
                 state = state,
                 hcAvailable = viewModel.isHealthConnectAvailable(),
                 onEnableHc = { runCatching { hcContractLauncher.launch(viewModel.healthConnectPermissions()) } },
-                onEnableSensor = { sensorPermLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION) }
+                onEnableSensor = { sensorPermLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION) },
+                myRank = leaderboardState.data?.myRank,
+                weeklyNur = state.weeklySteps / 100,
+                winnerStatus = winnerState.status,
+                alreadyClaimed = winnerState.alreadyClaimed,
+                onClaimTapped = { showClaimSheet = true }
             )
         }
 
@@ -132,6 +152,22 @@ fun StepsScreen(
         LeaderboardScreen(
             onDismiss = { showLeaderboard = false },
             viewModel = leaderboardViewModel
+        )
+    }
+
+    if (showClaimSheet) {
+        val periodId = winnerState.status?.periodId ?: ""
+        RewardClaimSheet(
+            rewardId = WinnerStatusViewModel.REWARD_ID,
+            periodId = periodId,
+            prefilledFullName = profileState.profile?.fullName,
+            onDismiss = { showClaimSheet = false },
+            onSubmitted = { claim ->
+                profileState.profile?.userId?.let { uid ->
+                    winnerViewModel.markLocallyClaimed(claim, uid)
+                }
+                showClaimSheet = false
+            }
         )
     }
 }
@@ -190,7 +226,12 @@ internal fun StepsContent(
     state: StepsUiState,
     hcAvailable: Boolean = false,
     onEnableHc: () -> Unit = {},
-    onEnableSensor: () -> Unit = {}
+    onEnableSensor: () -> Unit = {},
+    myRank: Int? = null,
+    weeklyNur: Int = 0,
+    winnerStatus: app.umaia.android.domain.repository.MonthlyWinnerStatus? = null,
+    alreadyClaimed: Boolean = false,
+    onClaimTapped: () -> Unit = {}
 ) {
     val s = LocalStrings.current
     Column(
@@ -206,6 +247,9 @@ internal fun StepsContent(
             color = TC.text, fontSize = 28.sp, fontWeight = FontWeight.Bold,
             modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center
         )
+
+        // Weekly leaderboard standing — top-of-tab summary widget.
+        WeeklyStandingHero(rank = myRank, weeklyNur = weeklyNur)
 
         // Circular step counter
         val progress = run {
@@ -298,6 +342,20 @@ internal fun StepsContent(
                 MilestoneBadge(milestone = m)
             }
         }
+
+        // ── Rewards section ──────────────────────────────────────────────────
+        Text(
+            s.rewards,
+            color = TC.text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold
+        )
+        winnerStatus?.let { CongratsBanner(it) }
+        NurRewardsStrip(
+            monthlyNur = state.monthlyNur,
+            status = winnerStatus,
+            alreadyClaimed = alreadyClaimed,
+            onClaimTapped = onClaimTapped
+        )
+        EarnMoreHints()
 
         // How Nur Works
         Column(

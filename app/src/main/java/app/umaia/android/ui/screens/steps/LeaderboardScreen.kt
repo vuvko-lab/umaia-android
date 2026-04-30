@@ -142,6 +142,7 @@ private fun PeriodPicker(
     val periods = listOf(
         LeaderboardPeriod.DAILY   to s.periodToday,
         LeaderboardPeriod.WEEKLY  to s.periodWeek,
+        LeaderboardPeriod.MONTHLY to s.periodMonth,
         LeaderboardPeriod.ALLTIME to s.periodAllTime
     )
     Row(

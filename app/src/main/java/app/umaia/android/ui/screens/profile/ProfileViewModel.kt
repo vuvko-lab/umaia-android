@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import app.umaia.android.data.analytics.AnalyticsService
 import app.umaia.android.data.auth.AuthService
 import app.umaia.android.data.local.AppPreferences
-import app.umaia.android.data.local.GameStateStore
+import app.umaia.android.data.local.GamePreferences
 import app.umaia.android.data.local.StepPreferences
 import app.umaia.android.data.local.ThemeMode
 import app.umaia.android.domain.model.UserProfile
@@ -31,7 +31,7 @@ data class ProfileUiState(
 class ProfileViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val authService: AuthService,
-    private val gameStateStore: GameStateStore,
+    private val gamePreferences: GamePreferences,
     private val stepPreferences: StepPreferences,
     private val analytics: AnalyticsService,
     val appPreferences: AppPreferences
@@ -43,18 +43,20 @@ class ProfileViewModel @Inject constructor(
     val themeMode: StateFlow<ThemeMode> = appPreferences.themeMode
     val language: StateFlow<String> = appPreferences.language
 
-    init {
-        viewModelScope.launch {
-            gameStateStore.stateFlow.collect { state ->
-                _uiState.update { it.copy(liveNur = state.nur.toInt()) }
-            }
-        }
-    }
-
     fun load() {
         viewModelScope.launch {
             val profile = runCatching { profileRepository.getProfile() }.getOrNull()
-            _uiState.update { it.copy(profile = profile, email = authService.tokenStorage.email ?: "") }
+            // Lifetime Nur is now derived from stepHistory + quiz nur − spent —
+            // see GamePreferences.totalNur. profile?.userId is required because
+            // spend bookkeeping is per-user.
+            val nur = profile?.userId?.let {
+                gamePreferences.totalNur(includingDaily = gamePreferences.dailySteps, userId = it)
+            } ?: 0
+            _uiState.update { it.copy(
+                profile = profile,
+                liveNur = nur,
+                email = authService.tokenStorage.email ?: ""
+            ) }
         }
     }
 
@@ -86,7 +88,6 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isDeleting = true, deleteError = null) }
             runCatching {
-                gameStateStore.reset()
                 stepPreferences.reset()
                 authService.deleteAccount()
                 analytics.signedOut()

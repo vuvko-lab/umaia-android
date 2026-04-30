@@ -4,7 +4,7 @@ import android.content.SharedPreferences
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.umaia.android.data.analytics.AnalyticsService
-import app.umaia.android.data.local.GameStateStore
+import app.umaia.android.data.local.GamePreferences
 import app.umaia.android.domain.model.*
 import app.umaia.android.domain.repository.NurRepository
 import app.umaia.android.domain.repository.ProfileRepository
@@ -25,7 +25,7 @@ sealed class OracleUiState {
 class OracleViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val nurRepository: NurRepository,
-    private val gameStateStore: GameStateStore,
+    private val gamePreferences: GamePreferences,
     private val analytics: AnalyticsService,
     private val prefs: SharedPreferences
 ) : ViewModel() {
@@ -70,7 +70,7 @@ class OracleViewModel @Inject constructor(
                     val result = calculateRiskAssessment(savedData)
                     saveTribalRole(result.tribalRole)
                     runCatching { profileRepository.saveOracleResult(result.tribalRole) }
-                    gameStateStore.update { s -> if (!s.oracleCompleted) s.copy(oracleCompleted = true) else s }
+                    gamePreferences.oracleNurAwarded = true
                     _uiState.value = OracleUiState.Result(result)
                 } else {
                     analytics.oracleStarted()
@@ -172,7 +172,6 @@ class OracleViewModel @Inject constructor(
             _uiState.value = OracleUiState.Loading
             try {
                 profileRepository.saveOracleResult(result.tribalRole)
-                gameStateStore.update { s -> if (!s.oracleCompleted) s.copy(oracleCompleted = true) else s }
                 analytics.oracleCompleted(result.tribalRole, _nurEarned.value)
                 if (!_nurAlreadyAwarded.value) {
                     val bonus = 50

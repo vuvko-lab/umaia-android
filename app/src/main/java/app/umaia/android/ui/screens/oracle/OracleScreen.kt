@@ -1,6 +1,9 @@
 package app.umaia.android.ui.screens.oracle
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -10,6 +13,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextDecoration
+import app.umaia.android.domain.model.OracleCitations
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
@@ -372,11 +378,20 @@ private fun ResultsView(
                     MetricCard(
                         label = "Life Impact",
                         value = "${if (result.totalImpact > 0) "+" else ""}${"%.1f".format(result.totalImpact)}",
-                        badge = s.oracleYears,
+                        badge = "${s.oracleYears} (net)",
                         badgeColor = if (result.totalImpact > 0) SageGreen else TerracottaRed,
                         modifier = Modifier.weight(1f)
                     )
                 }
+            }
+
+            // v1.3 — explicit positive/negative pills under the Life Impact metric.
+            // Lets the user see the math behind the net number (transparency).
+            if (result.riskFactors.isNotEmpty() || result.positiveFactors.isNotEmpty()) {
+                LifeImpactBreakdown(
+                    positiveSum = result.positiveFactors.sumOf { it.impact },
+                    negativeSum = result.riskFactors.sumOf { it.impact }
+                )
             }
 
             // Nur earned
@@ -446,7 +461,7 @@ private fun ResultsView(
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(containerColor = Gold),
                 shape = RoundedCornerShape(12.dp)
-            ) { Text(s.oracleReturnToVillage, color = NightBlue, fontWeight = FontWeight.Bold) }
+            ) { Text(s.oracleReturnToMain, color = NightBlue, fontWeight = FontWeight.Bold) }
         }
     }
 }
@@ -511,18 +526,89 @@ private fun FactorRow(factor: RiskFactor, isPositive: Boolean) {
         }
         Text(factor.recommendation, color = TC.muted, fontSize = 11.sp, lineHeight = 15.sp)
         Text(factor.source, color = TC.muted.copy(alpha = 0.4f), fontSize = 10.sp)
+        InlineCitations(ids = factor.citationIds)
     }
 }
 
 @Composable
 private fun DeficiencyRow(def: DeficiencyRisk) {
+    val s = LocalStrings.current
     Column(modifier = Modifier.padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(def.nutrient, color = OracleLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Text(def.description, color = TC.muted, fontSize = 11.sp, lineHeight = 15.sp)
-        Row {
-            Text("💡 ", fontSize = 10.sp)
-            Text(def.advice, color = Gold, fontSize = 11.sp, lineHeight = 15.sp)
+        Row(verticalAlignment = Alignment.Top) {
+            Text("🍴 ", fontSize = 10.sp)
+            Column {
+                Text(s.oracleFoodsRichIn(def.nutrient), color = TC.muted, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                Text(def.advice, color = Gold, fontSize = 11.sp, lineHeight = 15.sp)
+            }
         }
+        InlineCitations(ids = def.citationIds)
+    }
+}
+
+/**
+ * Renders citation ids as a row of clickable links. Replaces the old
+ * centralized References block: each row carries its own evidence trail so a
+ * curious user can tap straight through to the underlying study.
+ */
+@Composable
+private fun InlineCitations(ids: List<String>) {
+    if (ids.isEmpty()) return
+    val context = LocalContext.current
+    Row(modifier = Modifier.padding(top = 2.dp)) {
+        ids.mapNotNull { OracleCitations.byId(it) }.forEachIndexed { idx, citation ->
+            if (idx > 0) Text(" · ", color = TC.muted.copy(alpha = 0.4f), fontSize = 10.sp)
+            Text(
+                "[${citation.id.removePrefix("ref_")}]",
+                color = Gold,
+                fontSize = 10.sp,
+                style = androidx.compose.ui.text.TextStyle(textDecoration = TextDecoration.Underline),
+                modifier = Modifier.clickable {
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(citation.url)))
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun LifeImpactBreakdown(positiveSum: Double, negativeSum: Double) {
+    val s = LocalStrings.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (positiveSum > 0) {
+            Pill(
+                text = s.oracleHealthyHabits(positiveSum),
+                bg = SageGreen.copy(alpha = 0.15f),
+                fg = SageGreen,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        if (negativeSum < 0) {
+            Pill(
+                text = s.oracleRiskFactorsPill(negativeSum),
+                bg = TerracottaRed.copy(alpha = 0.15f),
+                fg = TerracottaRed,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun Pill(text: String, bg: Color, fg: Color, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .background(bg, RoundedCornerShape(20.dp))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text, color = fg, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
