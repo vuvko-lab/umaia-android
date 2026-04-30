@@ -274,6 +274,14 @@ data class AppStrings(
     val oracleHealthyHabits: (Double) -> String,
     val oracleRiskFactorsPill: (Double) -> String,
     val oracleFoodsRichIn: (String) -> String,
+
+    // ── v1.3.1 — Nur logic + share bonus ──────────────────────────────────────
+    val monthlyResets: String,
+    val shareNurBadge: String,
+    val shareNurBadgeClaimed: String,
+    val earnMoreToday: (Int) -> String,
+    val earnMoreMetForToday: String,
+    val earnMoreBeyondCap: String,
 )
 
 // ── CompositionLocal ──────────────────────────────────────────────────────────
@@ -374,10 +382,10 @@ val EnStrings = AppStrings(
     nextMilestone = { name -> "Next: $name" },
     nurFromSteps = "Nur from Steps",
     howNurWorks = "How Nur Works",
-    nurBullet1 = "Steps convert to Nur using a diminishing returns formula",
-    nurBullet2 = "Maximum ~50 Nur per day from steps",
-    nurBullet3 = "Nur boosts all resource production by +15%",
-    nurBullet4 = "Nur decays over time — keep walking!",
+    nurBullet1 = "Each day's walk earns up to ~80 Nur — first steps reward most, then it levels off",
+    nurBullet2 = "5k steps ≈ 45 Nur · 10k ≈ 65 · 15k ≈ 73 · cap 80",
+    nurBullet3 = "Daily login (+5) and share (+10) for an easy +15 each day",
+    nurBullet4 = "Counters reset on the 1st of each month",
     milestoneStepsProgress = { cur, max -> "$cur/$max steps" },
     dayHeaders = listOf("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"),
 
@@ -540,6 +548,13 @@ Now you are part of this movement. Your motion is not just exercise. It is the s
     oracleHealthyHabits = { y -> "✚ Healthy habits +${"%.1f".format(y)}y" },
     oracleRiskFactorsPill = { y -> "✖ Risk factors ${"%.1f".format(y)}y" },
     oracleFoodsRichIn = { nutrient -> "Foods rich in $nutrient:" },
+
+    monthlyResets = "Resets on the 1st of each month",
+    shareNurBadge = "+10 Nur",
+    shareNurBadgeClaimed = "✓",
+    earnMoreToday = { extra -> "Walk ~${"%,d".format(extra)} more steps today" },
+    earnMoreMetForToday = "You've hit today's pace — come back tomorrow",
+    earnMoreBeyondCap = "Walk as much as you can today",
 )
 
 // ── Russian ───────────────────────────────────────────────────────────────────
@@ -636,10 +651,10 @@ val RuStrings = AppStrings(
     nextMilestone = { name -> "Следующая: $name" },
     nurFromSteps = "Нур за шаги",
     howNurWorks = "Как работает Нур",
-    nurBullet1 = "Шаги конвертируются в Нур с убывающей отдачей",
-    nurBullet2 = "Максимум ~50 Нур в день за шаги",
-    nurBullet3 = "Нур увеличивает производство ресурсов на +15%",
-    nurBullet4 = "Нур убывает со временем — продолжайте ходить!",
+    nurBullet1 = "Каждый день шаги дают до ~80 Нур — первые шаги ценнее, потом рост замедляется",
+    nurBullet2 = "5к шагов ≈ 45 Нур · 10к ≈ 65 · 15к ≈ 73 · максимум 80",
+    nurBullet3 = "Ежедневный вход (+5) и репост (+10) — лёгкие +15 каждый день",
+    nurBullet4 = "Счётчики обнуляются 1-го числа каждого месяца",
     milestoneStepsProgress = { cur, max -> "$cur/$max шагов" },
     dayHeaders = listOf("Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"),
 
@@ -809,6 +824,13 @@ val RuStrings = AppStrings(
     oracleHealthyHabits = { y -> "✚ Полезные привычки +${"%.1f".format(y)} лет" },
     oracleRiskFactorsPill = { y -> "✖ Факторы риска ${"%.1f".format(y)} лет" },
     oracleFoodsRichIn = { nutrient -> "Продукты, богатые $nutrient:" },
+
+    monthlyResets = "Сбрасывается 1-го числа каждого месяца",
+    shareNurBadge = "+10 Нур",
+    shareNurBadgeClaimed = "✓",
+    earnMoreToday = { extra -> "Пройди ещё ~${"%,d".format(extra)} шагов сегодня" },
+    earnMoreMetForToday = "Сегодняшний темп выполнен — заходи завтра",
+    earnMoreBeyondCap = "Пройди сегодня как можно больше",
 )
 
 // ── Kazakh ───────────────────────────────────────────────────────────────────
@@ -905,10 +927,10 @@ val KkStrings = AppStrings(
     nextMilestone = { name -> "Келесі: $name" },
     nurFromSteps = "Қадамдардан Нұр",
     howNurWorks = "Нұр қалай жұмыс істейді",
-    nurBullet1 = "Қадамдар азаятын формуламен Нұрға айналады",
-    nurBullet2 = "Қадамдардан күніне ең көбі ~50 Нұр",
-    nurBullet3 = "Нұр барлық ресурс өндірісін +15% арттырады",
-    nurBullet4 = "Нұр уақыт өте азаяды — жүруді жалғастырыңыз!",
+    nurBullet1 = "Күн сайын қадамдар ~80 Нұрға дейін береді — алғашқы қадамдар көбірек, кейін баяулайды",
+    nurBullet2 = "5к қадам ≈ 45 Нұр · 10к ≈ 65 · 15к ≈ 73 · шегі 80",
+    nurBullet3 = "Күн сайынғы кіру (+5) мен бөлісу (+10) — күніне +15",
+    nurBullet4 = "Есептегіштер әр айдың 1-інде нөлденеді",
     milestoneStepsProgress = { cur, max -> "$cur/$max қадам" },
     dayHeaders = listOf("Дс", "Сс", "Ср", "Бс", "Жм", "Сб", "Жс"),
 
@@ -1071,4 +1093,11 @@ val KkStrings = AppStrings(
     oracleHealthyHabits = { y -> "✚ Пайдалы әдеттер +${"%.1f".format(y)} жыл" },
     oracleRiskFactorsPill = { y -> "✖ Қауіп факторлары ${"%.1f".format(y)} жыл" },
     oracleFoodsRichIn = { nutrient -> "$nutrient-ке бай тағамдар:" },
+
+    monthlyResets = "Әр айдың 1-інде нөлденеді",
+    shareNurBadge = "+10 Нұр",
+    shareNurBadgeClaimed = "✓",
+    earnMoreToday = { extra -> "Бүгін тағы ~${"%,d".format(extra)} қадам жаса" },
+    earnMoreMetForToday = "Бүгінгі екпін орындалды — ертең қайт",
+    earnMoreBeyondCap = "Бүгін мүмкіндігінше көп жүр",
 )

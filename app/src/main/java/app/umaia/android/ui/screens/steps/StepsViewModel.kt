@@ -25,6 +25,10 @@ data class StepsUiState(
     val weeklySteps: Int = 0,
     val monthlySteps: Int = 0,
     val monthlyNur: Int = 0,
+    /** Local "claim-subtract" counter for the current month — what the user
+     *  has already redeemed from this month's Nur. Subtract from server-truth
+     *  monthly Nur to render the displayed reward-tile progress. */
+    val monthlyNurSubtract: Int = 0,
     val nurFromSteps: Int = 0,
     val reachedMilestones: List<StepMilestone> = emptyList(),
     val nextMilestone: StepMilestone? = null,
@@ -39,8 +43,9 @@ data class StepsUiState(
     val debugSensorSteps: Int = -1
 )
 
-/** Steps → Nur conversion: 100 steps = 1 Nur. */
-internal fun stepsToNur(steps: Int): Int = steps / 100
+// v1.3.1: stepsToNur now lives in domain.Nur (asymptotic, matches server).
+// Kept as a top-level alias so existing call-sites (StepsScreen UI) keep working.
+internal fun stepsToNur(steps: Int): Int = app.umaia.android.domain.stepsToNur(steps)
 
 @HiltViewModel
 class StepsViewModel @Inject constructor(
@@ -51,8 +56,27 @@ class StepsViewModel @Inject constructor(
     private val analytics: AnalyticsService,
     private val locationTracker: LocationTracker,
     private val authService: AuthService,
-    private val stepBackfillService: app.umaia.android.data.sensor.StepBackfillService
+    private val stepBackfillService: app.umaia.android.data.sensor.StepBackfillService,
+    private val nurRepository: app.umaia.android.domain.repository.NurRepository,
 ) : ViewModel() {
+
+    /**
+     * Daily-share +10 Nur grant. Called when the user taps Share. Returns
+     * true iff the bonus was granted (i.e. first share today). Mirrors the
+     * grant on the server (`user_coins.balance += 10`) and fires a PostHog
+     * event. The local guard in [GamePreferences] dedupes within Almaty-day.
+     */
+    fun claimDailyShare(): Boolean {
+        val granted = gamePreferences.claimDailyShareNur()
+        if (granted <= 0) return false
+        analytics.dailyShareClaimed()
+        viewModelScope.launch {
+            runCatching { nurRepository.addNur(granted, "daily_share") }
+        }
+        return true
+    }
+
+    fun hasClaimedShareNurToday(): Boolean = gamePreferences.hasClaimedShareNurToday()
 
     private val _uiState = MutableStateFlow(
         StepsUiState(
@@ -73,6 +97,13 @@ class StepsViewModel @Inject constructor(
                 ?.healthConnect?.refreshAuthorization()
             doPermissionResult()
             recomputeAggregates(_uiState.value.dailySteps)
+        }
+        // v1.3.1: refresh aggregates whenever a non-step Nur grant lands
+        // (daily-share +10). Replaces iOS NotificationCenter subscription.
+        viewModelScope.launch {
+            gamePreferences.bonusNurGranted.collect {
+                recomputeAggregates(_uiState.value.dailySteps)
+            }
         }
     }
 
@@ -235,12 +266,14 @@ class StepsViewModel @Inject constructor(
         val weekly = gamePreferences.weeklySteps(today)
         val monthly = gamePreferences.monthlySteps(today)
         val monthlyNur = uid?.let { gamePreferences.effectiveMonthlyNur(today, it) } ?: (monthly / 100)
+        val subtract = uid?.let { gamePreferences.monthlyNurSubtract(it) } ?: 0
         _uiState.update { it.copy(
             stepHistory = history,
             totalSteps = totalSteps,
             weeklySteps = weekly,
             monthlySteps = monthly,
-            monthlyNur = monthlyNur
+            monthlyNur = monthlyNur,
+            monthlyNurSubtract = subtract,
         )}
     }
 

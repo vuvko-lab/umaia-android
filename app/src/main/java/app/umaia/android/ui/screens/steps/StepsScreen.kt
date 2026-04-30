@@ -114,16 +114,30 @@ fun StepsScreen(
                     else null
             )
         } else {
+            // v1.3.1: feed StepsContent the server-truth monthly Nur from the
+            // leaderboard RPC + the local "claim subtract" counter (sourced
+            // from StepsUiState) so the visible monthly Nur matches the
+            // leaderboard hero everywhere.
+            // Re-evaluate the share-claimed flag on each composition so the badge
+            // flips to ✓ as soon as the bonus is consumed (the SharedFlow will
+            // also force a recomposition via recomputeAggregates).
+            val shareClaimed = remember(state.dailySteps, state.monthlyNur) {
+                viewModel.hasClaimedShareNurToday()
+            }
             StepsContent(
                 state = state,
                 hcAvailable = viewModel.isHealthConnectAvailable(),
                 onEnableHc = { runCatching { hcContractLauncher.launch(viewModel.healthConnectPermissions()) } },
                 onEnableSensor = { sensorPermLauncher.launch(android.Manifest.permission.ACTIVITY_RECOGNITION) },
                 myRank = leaderboardState.data?.myRank,
-                weeklyNur = state.weeklySteps / 100,
+                monthlyServerNur = leaderboardState.data?.myNur,
+                monthlyNurSubtract = state.monthlyNurSubtract,
+                isLeaderboardLoading = leaderboardState.isLoading,
                 winnerStatus = winnerState.status,
                 alreadyClaimed = winnerState.alreadyClaimed,
-                onClaimTapped = { showClaimSheet = true }
+                onClaimTapped = { showClaimSheet = true },
+                onShareTapped = { viewModel.claimDailyShare() },
+                shareNurClaimedToday = shareClaimed,
             )
         }
 
@@ -228,10 +242,14 @@ internal fun StepsContent(
     onEnableHc: () -> Unit = {},
     onEnableSensor: () -> Unit = {},
     myRank: Int? = null,
-    weeklyNur: Int = 0,
+    monthlyServerNur: Int? = null,
+    monthlyNurSubtract: Int = 0,
+    isLeaderboardLoading: Boolean = false,
     winnerStatus: app.umaia.android.domain.repository.MonthlyWinnerStatus? = null,
     alreadyClaimed: Boolean = false,
-    onClaimTapped: () -> Unit = {}
+    onClaimTapped: () -> Unit = {},
+    onShareTapped: () -> Unit = {},
+    shareNurClaimedToday: Boolean = false,
 ) {
     val s = LocalStrings.current
     Column(
@@ -248,8 +266,12 @@ internal fun StepsContent(
             modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center
         )
 
-        // Weekly leaderboard standing — top-of-tab summary widget.
-        WeeklyStandingHero(rank = myRank, weeklyNur = weeklyNur)
+        // v1.3.1: monthly standing hero, server-truth Nur, "resets 1st of month".
+        MonthlyStandingHero(
+            rank = myRank,
+            monthlyNur = monthlyServerNur,
+            isLoading = isLeaderboardLoading
+        )
 
         // Circular step counter
         val progress = run {
@@ -316,16 +338,23 @@ internal fun StepsContent(
         )
 
         // Share steps
-        ShareStepsButton(steps = state.dailySteps, nur = state.nurFromSteps)
+        ShareStepsButton(
+            steps = state.dailySteps, nur = state.nurFromSteps,
+            onShareTapped = onShareTapped, claimed = shareNurClaimedToday,
+        )
 
         // Step Calendar
         StepCalendar(stepHistory = state.stepHistory, todaySteps = state.dailySteps, totalSteps = state.totalSteps)
 
         // Share calendar
-        ShareCalendarButton(stepHistory = state.stepHistory)
+        ShareCalendarButton(
+            stepHistory = state.stepHistory,
+            onShareTapped = onShareTapped, claimed = shareNurClaimedToday,
+        )
 
-        // Nur conversion grid
-        NurConversionGrid(currentSteps = state.dailySteps)
+        // v1.3.1: NurConversionGrid removed per iOS — the daily-step thresholds
+        // were misleading once the per-day formula went asymptotic (5k → 45 Nur,
+        // not 50). The "How Nur Works" bullets below carry the same info now.
 
         // Next milestone progress
         state.nextMilestone?.let { next ->
@@ -350,12 +379,18 @@ internal fun StepsContent(
         )
         winnerStatus?.let { CongratsBanner(it) }
         NurRewardsStrip(
-            monthlyNur = state.monthlyNur,
+            monthlyServerNur = monthlyServerNur,
+            monthlyNurSubtract = monthlyNurSubtract,
             status = winnerStatus,
             alreadyClaimed = alreadyClaimed,
             onClaimTapped = onClaimTapped
         )
-        EarnMoreHints()
+        EarnMoreHints(
+            monthlyNur = ((monthlyServerNur ?: 0) - monthlyNurSubtract).coerceAtLeast(0),
+            target = winnerStatus?.targetNur ?: WinnerStatusViewModel.MONTHLY_REWARD_COST_NUR,
+            todayStepNur = state.nurFromSteps,
+            todaySteps = state.dailySteps,
+        )
 
         // How Nur Works
         Column(
@@ -705,7 +740,7 @@ private fun buildCalendarGrid(year: Int, month: Int): List<List<Int>> {
 // ── Share Buttons ─────────────────────────────────────────────────────────────
 
 @Composable
-private fun ShareStepsButton(steps: Int, nur: Int) {
+private fun ShareStepsButton(steps: Int, nur: Int, onShareTapped: () -> Unit, claimed: Boolean) {
     val context = LocalContext.current
     val s = LocalStrings.current
     OutlinedButton(
@@ -715,6 +750,7 @@ private fun ShareStepsButton(steps: Int, nur: Int) {
             val fileName = "umaia_steps_${dateFormat.format(java.util.Date())}.png"
             StepShareUtils.saveBitmapAndShare(context, bitmap, fileName)
             bitmap.recycle()
+            onShareTapped()
         },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -724,11 +760,36 @@ private fun ShareStepsButton(steps: Int, nur: Int) {
         Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(13.dp))
         Spacer(Modifier.width(6.dp))
         Text(s.shareSteps, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.width(8.dp))
+        ShareNurBadge(claimed = claimed)
     }
 }
 
+/**
+ * Daily-share Nur badge. "+10 Nur" while still claimable, "✓" once today's
+ * share grant has been consumed (either button counts — the cap is shared).
+ */
 @Composable
-private fun ShareCalendarButton(stepHistory: Map<String, Int>) {
+private fun ShareNurBadge(claimed: Boolean) {
+    val s = LocalStrings.current
+    val (text, bg, fg) = if (claimed) {
+        Triple(s.shareNurBadgeClaimed, SageGreen.copy(alpha = 0.15f), SageGreen)
+    } else {
+        Triple(s.shareNurBadge, Gold.copy(alpha = 0.15f), Gold)
+    }
+    Text(
+        text,
+        color = fg,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier
+            .background(bg, CircleShape)
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+    )
+}
+
+@Composable
+private fun ShareCalendarButton(stepHistory: Map<String, Int>, onShareTapped: () -> Unit, claimed: Boolean) {
     val context = LocalContext.current
     val s = LocalStrings.current
     OutlinedButton(
@@ -739,6 +800,7 @@ private fun ShareCalendarButton(stepHistory: Map<String, Int>) {
             val fileName = "umaia_calendar_${dateFormat.format(java.util.Date())}.png"
             StepShareUtils.saveBitmapAndShare(context, bitmap, fileName)
             bitmap.recycle()
+            onShareTapped()
         },
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -748,6 +810,8 @@ private fun ShareCalendarButton(stepHistory: Map<String, Int>) {
         Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(13.dp))
         Spacer(Modifier.width(6.dp))
         Text(s.shareCalendar, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.width(8.dp))
+        ShareNurBadge(claimed = claimed)
     }
 }
 

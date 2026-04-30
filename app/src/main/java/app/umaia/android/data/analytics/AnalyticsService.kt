@@ -112,4 +112,9 @@ class AnalyticsService @Inject constructor(@ApplicationContext ctx: Context) {
     fun companyCodeJoined(code: String) =
         PostHog.capture("company_code_joined", properties = mapOf("code" to code))
     fun companyCodeSkipped() = PostHog.capture("company_code_skipped")
+
+    /** Fired once per Almaty-day after the user successfully shares the steps
+     *  / calendar image and the +10 daily-share Nur bonus is granted.
+     *  Local dedupe in [GamePreferences.claimDailyShareNur]. */
+    fun dailyShareClaimed() = PostHog.capture("daily_share_claimed")
 }

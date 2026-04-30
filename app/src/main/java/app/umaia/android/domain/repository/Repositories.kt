@@ -64,7 +64,10 @@ data class LeaderboardEntry(
 data class LeaderboardData(
     val entries: List<LeaderboardEntry>,
     val myRank: Int?,
-    val mySteps: Int?
+    val mySteps: Int?,
+    /** Server-truth period Nur for the current user — sum of `user_steps.nur_awarded`
+     *  under the asymptotic per-day formula. Null when no qualifying step rows. */
+    val myNur: Int? = null,
 )
 
 interface StepRepository {

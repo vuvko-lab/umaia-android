@@ -17,7 +17,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class LeaderboardUiState(
-    val period: LeaderboardPeriod = LeaderboardPeriod.WEEKLY,
+    // v1.3.1: Default to MONTHLY so MonthlyStandingHero on the Walk tab is
+    // anchored on the same period the rewards are scored against.
+    val period: LeaderboardPeriod = LeaderboardPeriod.MONTHLY,
     val data: LeaderboardData? = null,
     val isLoading: Boolean = false,
     val error: String? = null

@@ -21,15 +21,20 @@ import app.umaia.android.ui.theme.NightBlue
 import app.umaia.android.ui.theme.SageGreen
 import app.umaia.android.ui.theme.TC
 
-// ── Weekly standing hero ─────────────────────────────────────────────────────
+// ── Monthly standing hero ────────────────────────────────────────────────────
 
 /**
- * Compact "Rank #N · X Nur this week — resets Monday" widget at the top of
- * the Walk tab. Replaces the old `WeeklyStandingHero` that had a /target
- * progress bar (the deleted weekly Shopper voucher).
+ * "Rank #N · X Nur this month — Resets on the 1st of each month" widget at
+ * the top of the Walk tab. Sourced from the **server-truth** monthly
+ * leaderboard RPC (`LeaderboardData.myNur`), so the displayed Nur agrees
+ * with the leaderboard sheet and the reward tile progress.
+ *
+ * `monthlyNur == null` means the leaderboard fetch hasn't returned yet (or
+ * the user has zero qualifying server-side step rows this month) — show "—"
+ * while loading, "0" otherwise.
  */
 @Composable
-fun WeeklyStandingHero(rank: Int?, weeklyNur: Int) {
+fun MonthlyStandingHero(rank: Int?, monthlyNur: Int?, isLoading: Boolean) {
     val s = LocalStrings.current
     Row(
         modifier = Modifier
@@ -49,8 +54,13 @@ fun WeeklyStandingHero(rank: Int?, weeklyNur: Int) {
                 rank?.let { s.weeklyStandingRank(it) } ?: "—",
                 color = Gold, fontSize = 14.sp, fontWeight = FontWeight.Bold
             )
+            val nurLabel = when {
+                monthlyNur != null -> "$monthlyNur"
+                isLoading -> "—"
+                else -> "0"
+            }
             Text(
-                "$weeklyNur ${s.statNur} · ${s.weeklyResets}",
+                "$nurLabel ${s.statNur} · ${s.monthlyResets}",
                 color = TC.muted, fontSize = 11.sp
             )
         }
@@ -130,7 +140,8 @@ fun CongratsBanner(status: MonthlyWinnerStatus) {
 
 @Composable
 fun NurRewardsStrip(
-    monthlyNur: Int,
+    monthlyServerNur: Int?,
+    monthlyNurSubtract: Int,
     status: MonthlyWinnerStatus?,
     alreadyClaimed: Boolean,
     onClaimTapped: () -> Unit
@@ -138,6 +149,10 @@ fun NurRewardsStrip(
     val s = LocalStrings.current
     val target = status?.targetNur ?: WinnerStatusViewModel.MONTHLY_REWARD_COST_NUR
     val unlocked = !alreadyClaimed && (status?.amWinner == true)
+    // v1.3.1: tile reads server-truth monthly Nur (asymptotic per-day formula
+    // matches what the leaderboard hero shows) minus the local "claim-subtract"
+    // counter so the bar visibly drops after a successful claim.
+    val monthlyNur = ((monthlyServerNur ?: 0) - monthlyNurSubtract).coerceAtLeast(0)
     val progress = (monthlyNur.toFloat() / target).coerceIn(0f, 1f)
 
     Column(
@@ -175,9 +190,28 @@ fun NurRewardsStrip(
 
 // ── Earn-more hints ─────────────────────────────────────────────────────────
 
+/**
+ * "How to earn more Nur this month" pacing hint.
+ *
+ * Splits the remaining target across the days left in the calendar month
+ * (Asia/Almaty), subtracts the recurring +15 daily bonuses (login +5,
+ * share +10), and back-solves the steps needed today via [stepsForDailyNur].
+ *
+ * Three states:
+ *  - already on pace today → "you've hit today's pace"
+ *  - reachable → "walk ~N more steps today"
+ *  - daily share is past the asymptotic cap → "walk as much as you can"
+ */
 @Composable
-fun EarnMoreHints() {
+fun EarnMoreHints(
+    monthlyNur: Int,
+    target: Int,
+    todayStepNur: Int,
+    todaySteps: Int,
+) {
     val s = LocalStrings.current
+    val remaining = (target - monthlyNur).coerceAtLeast(0)
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -186,16 +220,45 @@ fun EarnMoreHints() {
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Text(s.earnMoreThisMonth, color = TC.text, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-        listOf(
-            "👣" to "10,000 ${s.stepsToday} = 100 ${s.statNur}",
-            "📅" to s.weeklyResets,
-            "🥇" to "Top 3 = ${s.rewardClaimTitle}"
-        ).forEach { (emoji, text) ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(emoji, fontSize = 13.sp)
-                Spacer(Modifier.width(8.dp))
-                Text(text, color = TC.muted, fontSize = 12.sp)
+
+        if (remaining == 0) {
+            HintRow("✅", s.earnMoreMetForToday)
+            return@Column
+        }
+
+        val today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Almaty"))
+        val daysInMonth = today.lengthOfMonth()
+        val daysLeftInclToday = (daysInMonth - today.dayOfMonth + 1).coerceAtLeast(1)
+        val dailyTotalNurNeeded = kotlin.math.ceil(remaining.toDouble() / daysLeftInclToday).toInt()
+        val dailyStepsNurNeeded = (dailyTotalNurNeeded - DAILY_BONUS_NUR).coerceAtLeast(0)
+
+        when {
+            todayStepNur >= dailyStepsNurNeeded -> {
+                HintRow("✅", s.earnMoreMetForToday)
+            }
+            else -> {
+                val needed = app.umaia.android.domain.stepsForDailyNur(dailyStepsNurNeeded)
+                if (needed == null) {
+                    HintRow("⚠️", s.earnMoreBeyondCap)
+                } else {
+                    val extra = (needed - todaySteps).coerceAtLeast(0)
+                    HintRow("👣", s.earnMoreToday(extra))
+                }
             }
         }
+    }
+}
+
+/** Daily login (+5) + daily share (+10) — the recurring bonuses every user
+ *  can claim on top of walking. EarnMoreHints subtracts this from the
+ *  pacing target so the suggestion isn't impossibly high. */
+private const val DAILY_BONUS_NUR = 15
+
+@Composable
+private fun HintRow(emoji: String, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(emoji, fontSize = 13.sp)
+        Spacer(Modifier.width(8.dp))
+        Text(text, color = TC.muted, fontSize = 12.sp)
     }
 }

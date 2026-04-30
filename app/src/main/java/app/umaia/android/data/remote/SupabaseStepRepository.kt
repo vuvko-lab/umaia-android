@@ -130,7 +130,8 @@ class SupabaseStepRepository @Inject constructor(private val db: PostgrestClient
         return LeaderboardData(
             entries = entries,
             myRank = myRank,
-            mySteps = myRow?.total_steps
+            mySteps = myRow?.total_steps,
+            myNur = myRow?.total_nur,
         )
     }
 

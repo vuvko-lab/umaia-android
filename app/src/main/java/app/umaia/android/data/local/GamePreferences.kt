@@ -3,6 +3,9 @@ package app.umaia.android.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
 import java.time.ZoneId
@@ -57,6 +60,16 @@ class GamePreferences @Inject constructor(@ApplicationContext ctx: Context) {
         set(v) { prefs.edit().putBoolean("umaia_oracle_nur_awarded", v).apply() }
 
     private val totalQuizNur: Int get() = if (oracleNurAwarded) 30 else 0
+
+    /** Accumulated non-step bonus Nur (daily-share, future bonuses). Bumped
+     *  by [claimDailyShareNur]; included in [totalNur] so it propagates into
+     *  the UMAIA-tab Total Nur stat without affecting server-truth monthly
+     *  Nur (which is step-only). */
+    private val bonusNurKey = "umaia_bonus_nur_accumulated"
+    private fun accumulatedBonusNur(): Int = prefs.getInt(bonusNurKey, 0)
+    private fun addBonusNur(amount: Int) {
+        prefs.edit().putInt(bonusNurKey, accumulatedBonusNur() + amount).apply()
+    }
 
     // ── Step history (per-day map persisted as JSON) ─────────────────────────
 
@@ -193,7 +206,7 @@ class GamePreferences @Inject constructor(@ApplicationContext ctx: Context) {
         val history = getStepHistory().toMutableMap()
         history[todayStr] = includingDaily
         val sumSteps = history.values.sum()
-        val nur = sumSteps / 100 + totalQuizNur
+        val nur = sumSteps / 100 + totalQuizNur + accumulatedBonusNur()
         return (nur - totalSpentNur(userId)).coerceAtLeast(0)
     }
 
@@ -244,11 +257,44 @@ class GamePreferences @Inject constructor(@ApplicationContext ctx: Context) {
         if (registrationDate == null) registrationDate = today().toString()
     }
 
+    // ── Daily share-Nur bonus (v1.3.1) ───────────────────────────────────────
+
+    /** Emits after a non-step Nur grant lands (daily-share, future bonuses).
+     *  Lets the Steps screen recompute aggregates without waiting for the
+     *  next pedometer tick. Replaces iOS NotificationCenter `umaiaBonusNurGranted`. */
+    private val _bonusNurGranted = MutableSharedFlow<Unit>(extraBufferCapacity = 4)
+    val bonusNurGranted: SharedFlow<Unit> = _bonusNurGranted.asSharedFlow()
+
+    private fun lastShareNurDateKey() = "umaia_last_share_nur_date"
+
+    /** True iff the user has already claimed today's share-Nur bonus. */
+    fun hasClaimedShareNurToday(): Boolean =
+        prefs.getString(lastShareNurDateKey(), null) == today().toString()
+
+    /**
+     * Grant the daily share-Nur bonus if not already claimed today. Returns the
+     * amount granted (0 if already claimed). The caller is responsible for the
+     * server-side mirror via `NurRepository.addNur(amount, "daily_share")`.
+     * Emits [bonusNurGranted] so the Walk-tab aggregates refresh immediately.
+     */
+    fun claimDailyShareNur(): Int {
+        if (hasClaimedShareNurToday()) return 0
+        prefs.edit().putString(lastShareNurDateKey(), today().toString()).apply()
+        addBonusNur(SHARE_DAILY_NUR)
+        _bonusNurGranted.tryEmit(Unit)
+        return SHARE_DAILY_NUR
+    }
+
     fun daysSinceLastVisit(): Int {
         val lastVisit = lastVisitDate ?: return 0
         return runCatching {
             val last = LocalDate.parse(lastVisit)
             java.time.temporal.ChronoUnit.DAYS.between(last, today()).toInt()
         }.getOrDefault(0)
+    }
+
+    companion object {
+        /** Daily share-Nur grant. Same value on iOS (`GamePreferences.shareDailyNur`). */
+        const val SHARE_DAILY_NUR: Int = 10
     }
 }
