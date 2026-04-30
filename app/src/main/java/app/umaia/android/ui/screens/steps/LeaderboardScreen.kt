@@ -262,11 +262,20 @@ private fun LeaderboardRowItem(entry: LeaderboardEntry) {
             }
         }
 
-        // Steps
-        Text(
-            "%,d".format(entry.totalSteps),
-            color = if (entry.isMe) Gold else TC.text,
-            fontSize = 14.sp, fontWeight = FontWeight.SemiBold
-        )
+        // v1.3.2: render both Nur and steps (matches iOS leaderboard row).
+        // Nur is the scored quantity for monthly podium; steps is the
+        // human-readable signal of effort.
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                "${entry.totalNur} ${s.statNur}",
+                color = if (entry.isMe) Gold else TC.text,
+                fontSize = 14.sp, fontWeight = FontWeight.Bold
+            )
+            Text(
+                "%,d".format(entry.totalSteps),
+                color = TC.muted,
+                fontSize = 11.sp
+            )
+        }
     }
 }

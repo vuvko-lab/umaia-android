@@ -745,7 +745,7 @@ private fun ShareStepsButton(steps: Int, nur: Int, onShareTapped: () -> Unit, cl
     val s = LocalStrings.current
     OutlinedButton(
         onClick = {
-            val bitmap = StepShareUtils.createTodayStepsImage(steps, nur)
+            val bitmap = StepShareUtils.createTodayStepsImage(context, steps, nur)
             val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
             val fileName = "umaia_steps_${dateFormat.format(java.util.Date())}.png"
             StepShareUtils.saveBitmapAndShare(context, bitmap, fileName)
@@ -795,7 +795,7 @@ private fun ShareCalendarButton(stepHistory: Map<String, Int>, onShareTapped: ()
     OutlinedButton(
         onClick = {
             val calendar = java.util.Calendar.getInstance()
-            val bitmap = StepShareUtils.createCalendarImage(stepHistory, calendar)
+            val bitmap = StepShareUtils.createCalendarImage(context, stepHistory, calendar)
             val dateFormat = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.US)
             val fileName = "umaia_calendar_${dateFormat.format(java.util.Date())}.png"
             StepShareUtils.saveBitmapAndShare(context, bitmap, fileName)

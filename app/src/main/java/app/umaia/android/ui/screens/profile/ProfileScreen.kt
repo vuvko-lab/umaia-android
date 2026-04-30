@@ -60,7 +60,7 @@ fun ProfileScreen(
                 name = state.profile?.fullName,
                 email = state.email,
                 nur = state.liveNur,
-                streak = state.profile?.currentStreak ?: 0,
+                weekNur = state.weekNur,
                 companyName = state.profile?.companyName
             )
 
@@ -225,14 +225,14 @@ internal fun HeroSection() {
 // ── Profile Card ──────────────────────────────────────────────────────────────
 
 @Composable
-internal fun ProfileCard(name: String?, email: String, nur: Int, streak: Int, companyName: String? = null) {
+internal fun ProfileCard(
+    name: String?,
+    email: String,
+    nur: Int,
+    weekNur: Int,
+    companyName: String? = null,
+) {
     val s = LocalStrings.current
-    val season = when (Calendar.getInstance().get(Calendar.MONTH) + 1) {
-        in 3..5 -> s.seasonSpring
-        in 6..8 -> s.seasonSummer
-        in 9..11 -> s.seasonAutumn
-        else -> s.seasonWinter
-    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -266,10 +266,11 @@ internal fun ProfileCard(name: String?, email: String, nur: Int, streak: Int, co
                 }
             }
         }
+        // v1.3.2: 2 stats only (Total Nur + Nur this week) — drops Streak +
+        // Season per Alua's iOS rev to keep both clients in sync.
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             StatBox("$nur", s.totalNur, color = Gold, modifier = Modifier.weight(1f))
-            StatBox("$streak", s.streak, icon = "🔥", color = Ember, modifier = Modifier.weight(1f))
-            StatBox(season, s.seasonLabel, icon = "📅", color = TC.text.copy(alpha = 0.6f), modifier = Modifier.weight(1f))
+            StatBox("$weekNur", s.nurThisWeek, icon = "📅", color = Ember, modifier = Modifier.weight(1f))
         }
     }
 }

@@ -2,6 +2,7 @@ package app.umaia.android.ui.screens.companycode
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.umaia.android.data.analytics.AnalyticsService
 import app.umaia.android.data.auth.AuthService
 import app.umaia.android.data.local.GamePreferences
 import app.umaia.android.domain.repository.InvalidCompanyCodeException
@@ -25,6 +26,7 @@ class CompanyCodeViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
     private val gamePreferences: GamePreferences,
     private val authService: AuthService,
+    private val analytics: AnalyticsService,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CompanyCodeUiState())
@@ -39,6 +41,7 @@ class CompanyCodeViewModel @Inject constructor(
                 .onSuccess {
                     val uid = authService.currentUserId
                     if (uid != null) gamePreferences.markCompanyChoiceMade(uid)
+                    analytics.companyCodeJoined(code)
                     _uiState.update { it.copy(isLoading = false, completed = true) }
                 }
                 .onFailure { e ->
@@ -54,6 +57,7 @@ class CompanyCodeViewModel @Inject constructor(
     fun skip() {
         val uid = authService.currentUserId ?: return
         gamePreferences.markCompanyChoiceMade(uid)
+        analytics.companyCodeSkipped()
         _uiState.update { it.copy(completed = true) }
     }
 }

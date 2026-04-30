@@ -9,6 +9,7 @@ import app.umaia.android.data.local.GamePreferences
 import app.umaia.android.data.local.StepPreferences
 import app.umaia.android.data.local.ThemeMode
 import app.umaia.android.domain.model.UserProfile
+import app.umaia.android.domain.repository.LoginRepository
 import app.umaia.android.domain.repository.ProfileRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -18,6 +19,7 @@ import javax.inject.Inject
 data class ProfileUiState(
     val profile: UserProfile? = null,
     val liveNur: Int = 0,
+    val weekNur: Int = 0,
     val email: String = "",
     val isDeleting: Boolean = false,
     val deleteError: String? = null,
@@ -30,6 +32,7 @@ data class ProfileUiState(
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val profileRepository: ProfileRepository,
+    private val loginRepository: LoginRepository,
     private val authService: AuthService,
     private val gamePreferences: GamePreferences,
     private val stepPreferences: StepPreferences,
@@ -43,6 +46,22 @@ class ProfileViewModel @Inject constructor(
     val themeMode: StateFlow<ThemeMode> = appPreferences.themeMode
     val language: StateFlow<String> = appPreferences.language
 
+    init {
+        // v1.3.2: mirror the repository's profile flow into our UI state so that
+        // mutations made elsewhere (e.g. CompanyCodeViewModel.setCompanyCode →
+        // implicit getProfile() refresh) propagate to all observers — including
+        // the BottomNavBar's `showSeer` gate. Without this, joining a company
+        // code only updates the repo cache; the NavGraph-level VM stays stale
+        // until the next explicit `load()`, hiding the Seer tab on first paint.
+        viewModelScope.launch {
+            profileRepository.observeProfile().collect { fresh ->
+                if (fresh != null) {
+                    _uiState.update { it.copy(profile = fresh) }
+                }
+            }
+        }
+    }
+
     fun load() {
         viewModelScope.launch {
             val profile = runCatching { profileRepository.getProfile() }.getOrNull()
@@ -52,11 +71,20 @@ class ProfileViewModel @Inject constructor(
             val nur = profile?.userId?.let {
                 gamePreferences.totalNur(includingDaily = gamePreferences.dailySteps, userId = it)
             } ?: 0
+            val weekNur = gamePreferences.weeklySteps(gamePreferences.dailySteps) / 100
             _uiState.update { it.copy(
                 profile = profile,
                 liveNur = nur,
+                weekNur = weekNur,
                 email = authService.tokenStorage.email ?: ""
             ) }
+        }
+        // v1.3.2: claim today's daily-login Nur (idempotent server-side via
+        // `claim_daily_login` RPC). Mirrors the iOS DashboardViewModel call
+        // site that was lost when we deleted Dashboard in v1.3. Failures
+        // are silent — the server has its own per-Almaty-day dedupe.
+        viewModelScope.launch {
+            runCatching { loginRepository.recordDailyLogin() }
         }
     }
 

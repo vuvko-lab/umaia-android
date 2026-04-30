@@ -2,12 +2,14 @@ package app.umaia.android.ui.screens.steps
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Color as AndroidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.FileProvider
+import app.umaia.android.R
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -15,7 +17,28 @@ import java.util.*
 
 object StepShareUtils {
 
+    /**
+     * Loads `R.drawable.logo_umaia` scaled to [maxSide] for compositing into
+     * share images. Pulled out so both image factories can reuse it.
+     */
+    private fun loadLogo(context: Context, maxSide: Int): Bitmap? = runCatching {
+        val raw = BitmapFactory.decodeResource(context.resources, R.drawable.logo_umaia) ?: return null
+        val ratio = raw.height.toFloat() / raw.width.toFloat()
+        val w = maxSide
+        val h = (maxSide * ratio).toInt()
+        Bitmap.createScaledBitmap(raw, w, h, true)
+    }.getOrNull()
+
+    /** Composites the Umaia logo above the brand text on a 1080×1920 share canvas. */
+    private fun drawLogoFooter(canvas: Canvas, context: Context, width: Int) {
+        val logo = loadLogo(context, maxSide = 240) ?: return
+        val cx = width / 2f - logo.width / 2f
+        val cy = 1700f - logo.height / 2f  // ~120 px above the brand-text baseline at y=1850
+        canvas.drawBitmap(logo, cx, cy, null)
+    }
+
     fun createTodayStepsImage(
+        context: Context,
         steps: Int,
         nur: Int,
         stepGoal: Int = 10_000
@@ -106,7 +129,9 @@ object StepShareUtils {
         }
         canvas.drawText(dateFormat.format(Date()), width / 2f, 1200f, datePaint)
 
-        // Footer branding
+        // Footer branding (logo + wordmark) — so a re-shared image carries
+        // Umaia's brand even on platforms that strip alt text.
+        drawLogoFooter(canvas, context, width)
         val brandPaint = Paint().apply {
             color = AndroidColor.parseColor("#666666")
             textSize = 40f
@@ -118,6 +143,7 @@ object StepShareUtils {
     }
 
     fun createCalendarImage(
+        context: Context,
         stepHistory: Map<String, Int>,
         currentMonth: Calendar = Calendar.getInstance()
     ): Bitmap {
@@ -214,7 +240,8 @@ object StepShareUtils {
             canvas.drawText(day.toString(), x, y + 15, textPaint)
         }
 
-        // Footer
+        // Footer (logo + wordmark)
+        drawLogoFooter(canvas, context, width)
         val footerPaint = Paint().apply {
             color = AndroidColor.parseColor("#666666")
             textSize = 30f

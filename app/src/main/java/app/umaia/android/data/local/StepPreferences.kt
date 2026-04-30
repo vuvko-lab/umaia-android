@@ -8,6 +8,7 @@ import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -58,6 +59,30 @@ class StepPreferences @Inject constructor(@ApplicationContext ctx: Context) {
     var lastSensorCumulativeTs: Long
         get() = prefs.getLong("step_last_sensor_cumulative_ts", 0L)
         set(v) { prefs.edit().putLong("step_last_sensor_cumulative_ts", v).apply() }
+
+    // ── Submission idempotency (Asia/Almaty per-day) ──────────────────────────
+
+    /**
+     * Cumulative steps already submitted to the server for today (Asia/Almaty).
+     * Used as the anchor for delta submissions: at each flush, send
+     * `currentSteps − lastSubmittedDailyTotal` and on success advance.
+     * Survives cold start, so re-launching the app no longer re-submits the
+     * day's count and doubles the leaderboard.
+     */
+    private fun lastSubmittedKey(date: String) = "step_last_submitted_total_$date"
+
+    /** Almaty `yyyy-MM-dd`. */
+    private fun almatyToday(): String =
+        SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("Asia/Almaty")
+        }.format(Date())
+
+    fun lastSubmittedDailyTotal(date: String = almatyToday()): Int =
+        prefs.getInt(lastSubmittedKey(date), 0)
+
+    fun setLastSubmittedDailyTotal(total: Int, date: String = almatyToday()) {
+        prefs.edit().putInt(lastSubmittedKey(date), total).apply()
+    }
 
     /** Call whenever the user is actively using the app / steps are flowing. */
     fun recordActive() {

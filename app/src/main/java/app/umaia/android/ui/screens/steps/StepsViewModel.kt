@@ -78,11 +78,32 @@ class StepsViewModel @Inject constructor(
 
     fun hasClaimedShareNurToday(): Boolean = gamePreferences.hasClaimedShareNurToday()
 
+    /**
+     * Cold-start daily-step seed. Reads the persisted `dailySteps`, but resets
+     * to 0 if `dailyStepsDate` is stale (Asia/Almaty rollover). Without this
+     * the UI starts at 0 and the observer's `previous = 0` math triggers a
+     * full re-submit of today's count (the v1.3.1 leaderboard-doubling bug).
+     */
+    private val initialDailySteps: Int = run {
+        val today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Almaty")).toString()
+        if (gamePreferences.dailyStepsDate != today) {
+            gamePreferences.dailySteps = 0
+            gamePreferences.dailyStepsDate = today
+            0
+        } else {
+            gamePreferences.dailySteps
+        }
+    }
+
     private val _uiState = MutableStateFlow(
         StepsUiState(
             isPermissionGranted = stepTracker.isAuthorized,
+            dailySteps = initialDailySteps,
+            nurFromSteps = stepsToNur(initialDailySteps),
             stepHistory = gamePreferences.getStepHistory(),
-            totalSteps = gamePreferences.getStepHistory().values.sum() + gamePreferences.dailySteps,
+            totalSteps = gamePreferences.getStepHistory().values.sum() + initialDailySteps,
+            reachedMilestones = getReachedMilestones(initialDailySteps),
+            nextMilestone = getNextMilestone(initialDailySteps),
             suspectedCheating = stepPreferences.isSuspectedCheatingToday,
             healthConnectActive = healthConnectAuthorized()
         )
@@ -109,7 +130,9 @@ class StepsViewModel @Inject constructor(
 
     private var observeJob: Job? = null
     private var submitJob: Job? = null
-    private var pendingDelta = 0
+    // Note: there's no in-memory pending-delta counter anymore. Each flush
+    // computes the unsubmitted batch from `currentSteps − lastSubmittedDailyTotal`
+    // (StepPreferences) so cold-starts / crashes can't double-submit today's count.
 
     /** Re-evaluate authorization after any permission flow returns and start tracking if granted. */
     fun onPermissionResult() {
@@ -218,7 +241,12 @@ class StepsViewModel @Inject constructor(
                 gamePreferences.dailySteps = today
                 gamePreferences.updateStepHistory(today)
                 recomputeAggregates(today)
-                stepRepository.submitSteps(offlineSteps, "offline")
+                val result = stepRepository.submitSteps(offlineSteps, "offline")
+                // Advance the per-day idempotency anchor on success so the live
+                // observer's flush doesn't resubmit these steps.
+                if (result.success) {
+                    stepPreferences.setLastSubmittedDailyTotal(today)
+                }
             }
             stepPreferences.recordActive()
         }
@@ -244,9 +272,10 @@ class StepsViewModel @Inject constructor(
                 if (newMilestones.size > oldMilestones.size) {
                     newMilestones.lastOrNull()?.let { analytics.stepMilestoneReached(it.steps) }
                 }
-                val delta = maxOf(0, steps - previous)
-                if (delta > 0) {
-                    pendingDelta += delta
+                // The actual unsubmitted-delta is computed at flush time from
+                // `currentSteps − lastSubmittedDailyTotal` (see [pendingDelta]),
+                // so we just need to refresh local prefs/aggregates here.
+                if (steps > previous) {
                     gamePreferences.dailySteps = steps
                     gamePreferences.updateStepHistory(steps)
                     recomputeAggregates(steps)
@@ -306,14 +335,21 @@ class StepsViewModel @Inject constructor(
     }
 
     private suspend fun flushPendingSteps() {
-        val batch = pendingDelta
+        // Snapshot the current daily total BEFORE submitting so we can advance
+        // `lastSubmittedDailyTotal` to *exactly* what the server received.
+        // (The user may walk more between snapshot and submit success — those
+        // extra steps fall to the next flush, no double-counting.)
+        val current = _uiState.value.dailySteps
+        val anchor = stepPreferences.lastSubmittedDailyTotal()
+        val batch = (current - anchor).coerceAtLeast(0)
         if (batch <= 0) return
-        pendingDelta = 0
         val suspected = _uiState.value.suspectedCheating
         val result = stepRepository.submitSteps(batch, "live", suspected)
-        if (!result.success) {
-            pendingDelta += batch // put back on failure
+        if (result.success) {
+            stepPreferences.setLastSubmittedDailyTotal(current)
         }
+        // On failure, leave anchor unchanged so the next flush retries the
+        // same delta. No in-memory pendingDelta needed.
     }
 
     private fun checkGpsAtCheckpoint(previousSteps: Int, currentSteps: Int) {
