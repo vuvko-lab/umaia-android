@@ -228,13 +228,23 @@ class SupabaseStepRepository @Inject constructor(private val db: PostgrestClient
         return start to end
     }
 
-    /** Sum (step_count, nur_awarded) for the calling user across an arbitrary
-     *  `submitted_at` UTC range. Only reads own rows (RLS-safe). */
+    /** Sum (step_count, total_nur) for the calling user across an arbitrary
+     *  UTC range. Only reads own rows (RLS-safe).
+     *
+     *  `total_nur` is the *full* period earnings — not just step Nur. The
+     *  server's leaderboard RPC only aggregates `user_steps.nur_awarded`, so
+     *  the user's bonus grants (daily share +10, daily login +20, Oracle
+     *  completion, wisdom tests) never appear there. We fix that client-side
+     *  by also summing `user_coin_transactions.amount` for the same range,
+     *  excluding `steps_validated` rows (which would double-count the trigger's
+     *  mirror of `user_steps.nur_awarded`). */
     private suspend fun fetchMyStatsInRange(startUtc: String, endUtc: String): Pair<Int, Int> {
         val uid = db.userId
-        @Serializable data class Row(val step_count: Int, val nur_awarded: Int)
-        return runCatching {
-            val rows: List<Row> = db.select(
+        @Serializable data class StepRow(val step_count: Int, val nur_awarded: Int)
+        @Serializable data class TxRow(val amount: Int, val transaction_type: String)
+
+        val (steps, stepNur) = runCatching {
+            val rows: List<StepRow> = db.select(
                 table = "user_steps",
                 columns = "step_count,nur_awarded",
                 filters = mapOf("user_id" to uid, "rejected" to "false"),
@@ -245,9 +255,32 @@ class SupabaseStepRepository @Inject constructor(private val db: PostgrestClient
             )
             rows.fold(0 to 0) { (s, n), r -> (s + r.step_count) to (n + r.nur_awarded) }
         }.getOrElse {
-            android.util.Log.e("UmaiaSteps", "fetchMyStatsInRange($startUtc..$endUtc) FAILED: ${it.message}", it)
+            android.util.Log.e("UmaiaSteps", "fetchMyStatsInRange steps($startUtc..$endUtc) FAILED: ${it.message}", it)
             0 to 0
         }
+
+        val bonusNur = runCatching {
+            val txs: List<TxRow> = db.select(
+                table = "user_coin_transactions",
+                columns = "amount,transaction_type",
+                filters = mapOf("user_id" to uid),
+                rawFilters = listOf(
+                    "created_at" to "gte.$startUtc",
+                    "created_at" to "lt.$endUtc",
+                ),
+            )
+            // Exclude steps_validated — already counted in stepNur above.
+            // Sum positive grants (daily_share, daily_login, oracle_*, etc.)
+            // and any negatives (refunds / claims) so the period total
+            // matches user_coins.balance deltas.
+            txs.asSequence().filter { it.transaction_type != "steps_validated" }.sumOf { it.amount }
+        }.getOrElse {
+            android.util.Log.e("UmaiaSteps", "fetchMyStatsInRange bonus($startUtc..$endUtc) FAILED: ${it.message}", it)
+            0
+        }
+
+        android.util.Log.d("UmaiaSteps", "fetchMyStatsInRange($startUtc..$endUtc): steps=$steps stepNur=$stepNur bonusNur=$bonusNur")
+        return steps to (stepNur + bonusNur)
     }
 
     /** ISO-8601 UTC instants for the Asia/Almaty current month bounds —

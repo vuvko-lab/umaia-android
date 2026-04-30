@@ -140,12 +140,11 @@ fun StepsScreen(
             // leaderboard RPC + the local "claim subtract" counter (sourced
             // from StepsUiState) so the visible monthly Nur matches the
             // leaderboard hero everywhere.
-            // Re-evaluate the share-claimed flag on each composition so the badge
-            // flips to ✓ as soon as the bonus is consumed (the SharedFlow will
-            // also force a recomposition via recomputeAggregates).
-            val shareClaimed = remember(state.dailySteps, state.monthlyNur) {
-                viewModel.hasClaimedShareNurToday()
-            }
+            // shareClaimedToday is owned by StepsUiState and refreshed in
+            // recomputeAggregates, which runs on every bonusNurGranted emission
+            // (StepsViewModel.init) — the badge flips to ✓ as soon as the
+            // ShareCompletionReceiver claims the bonus. No remember/key needed.
+            val shareClaimed = state.shareClaimedToday
             StepsContent(
                 state = state,
                 hcAvailable = viewModel.isHealthConnectAvailable(),

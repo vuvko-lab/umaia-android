@@ -50,6 +50,12 @@ data class StepsUiState(
     val stepHistory: Map<String, Int> = emptyMap(),
     val suspectedCheating: Boolean = false,
     val healthConnectActive: Boolean = false,
+    /** True iff the daily-share +10 Nur bonus has already been claimed
+     *  today (Asia/Almaty). Drives the badge swap from "+10 Nur" → ✓ on
+     *  the Walk-tab Share buttons. Refreshed in [recomputeAggregates] so
+     *  it picks up `bonusNurGranted` events without an explicit observer
+     *  in the composable. */
+    val shareClaimedToday: Boolean = false,
     // Debug — per-source step counts. -1 means "not authorized".
     val debugHcSteps: Int = -1,
     val debugSensorSteps: Int = -1
@@ -373,6 +379,7 @@ class StepsViewModel @Inject constructor(
             monthlySteps = monthly,
             monthlyNur = monthlyNur,
             monthlyNurSubtract = subtract,
+            shareClaimedToday = gamePreferences.hasClaimedShareNurToday(),
         )}
     }
 
