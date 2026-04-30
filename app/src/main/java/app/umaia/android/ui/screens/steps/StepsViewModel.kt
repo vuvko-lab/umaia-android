@@ -71,6 +71,7 @@ class StepsViewModel @Inject constructor(
     private val stepBackfillService: app.umaia.android.data.sensor.StepBackfillService,
     private val nurRepository: app.umaia.android.domain.repository.NurRepository,
     private val notifications: app.umaia.android.data.notification.UmaiaNotifications,
+    private val submissionCoordinator: app.umaia.android.data.sensor.StepSubmissionCoordinator,
 ) : ViewModel() {
 
     /**
@@ -252,10 +253,32 @@ class StepsViewModel @Inject constructor(
 
     fun startTracking() {
         if (!stepTracker.isAuthorized) return
+        bootReconcile()
         catchUpOfflineSteps()
         startObserving()
         startSubmitLoop()
         stepPreferences.recordActive()
+    }
+
+    /** Reconcile local `lastSubmittedDailyTotal` with what the server already
+     *  has for the calling user today (Asia/Almaty). Keeps a fresh-install
+     *  device from re-submitting the day's count when the server still
+     *  remembers earlier accepted submissions from another device or a
+     *  prior session. Mirrors iOS `submissionCoordinator.reconcileAndSubmit`
+     *  on app appear. */
+    private fun bootReconcile() {
+        viewModelScope.launch {
+            val current = _uiState.value.dailySteps
+            if (current <= 0) return@launch
+            val serverToday = runCatching { stepRepository.getTodayServerSteps() }.getOrDefault(0)
+            val suspected = _uiState.value.suspectedCheating
+            submissionCoordinator.reconcileAndSubmit(
+                currentDaily = current,
+                knownServerTotal = serverToday,
+                source = "boot",
+                suspectedCheating = suspected,
+            )
+        }
     }
 
     fun stopTracking() {
@@ -285,21 +308,15 @@ class StepsViewModel @Inject constructor(
                 gamePreferences.dailySteps = today
                 gamePreferences.updateStepHistory(today)
                 recomputeAggregates(today)
-                val nowMs = System.currentTimeMillis()
-                if (nowMs - stepPreferences.lastSubmitAttemptAt < MIN_SUBMIT_GAP_MS) {
-                    // Too soon after a prior submit attempt — defer to the
-                    // periodic 35s flush, which picks up the same delta via
-                    // `lastSubmittedDailyTotal`.
-                    stepPreferences.recordActive()
-                    return@launch
-                }
-                val result = stepRepository.submitSteps(offlineSteps, "offline")
-                if (result.success) {
-                    stepPreferences.lastSubmitAttemptAt = nowMs
-                    if (!result.rejected) {
-                        stepPreferences.setLastSubmittedDailyTotal(today)
-                    }
-                }
+                // Route through the coordinator so this submitter races
+                // safely against the periodic flush, the boot reconcile, and
+                // (Phase B.3) the HC background worker. The 32s gate lives
+                // inside the coordinator.
+                submissionCoordinator.submitDelta(
+                    currentDaily = today,
+                    source = "offline",
+                    suspectedCheating = _uiState.value.suspectedCheating,
+                )
             }
             stepPreferences.recordActive()
         }
@@ -390,41 +407,15 @@ class StepsViewModel @Inject constructor(
     }
 
     private suspend fun flushPendingSteps() {
-        // Client-side anti-spam guard: mirror the server's 30s `too_frequent`
-        // rule with a 32s margin (small clock-skew buffer). Off-cadence
-        // triggers — stopTracking() → flush, leaderboard sheet open/close
-        // re-firing the DisposableEffect, immediate post-catch-up flushes —
-        // would otherwise land <30s after a periodic 35s flush and the server
-        // would reject. Deferred steps stay in `lastSubmittedDailyTotal` and
-        // ride the next eligible flush; no data loss.
-        val now = System.currentTimeMillis()
-        if (now - stepPreferences.lastSubmitAttemptAt < MIN_SUBMIT_GAP_MS) return
-
-        // Snapshot the current daily total BEFORE submitting so we can advance
-        // `lastSubmittedDailyTotal` to *exactly* what the server received.
-        // (The user may walk more between snapshot and submit success — those
-        // extra steps fall to the next flush, no double-counting.)
-        val current = _uiState.value.dailySteps
-        val anchor = stepPreferences.lastSubmittedDailyTotal()
-        val batch = (current - anchor).coerceAtLeast(0)
-        if (batch <= 0) return
-        val suspected = _uiState.value.suspectedCheating
-        val result = stepRepository.submitSteps(batch, "live", suspected)
-        if (result.success) {
-            // Advance the gate timer regardless of rejected — back-to-back
-            // retries within 30s would just be rejected again.
-            stepPreferences.lastSubmitAttemptAt = now
-            if (!result.rejected) {
-                stepPreferences.setLastSubmittedDailyTotal(current)
-            }
-        }
-        // On HTTP failure, leave both unchanged so the next flush retries.
-    }
-
-    companion object {
-        /** Minimum gap between server submissions. Mirrors the server's 30s
-         *  `too_frequent` rule with a small clock-skew margin. */
-        private const val MIN_SUBMIT_GAP_MS = 32_000L
+        // All submission logic — delta computation, baseline claim, CAS
+        // rollback, and the 32s anti-spam gate — lives in the coordinator.
+        // This method is a thin shim that exists for the existing call sites
+        // (periodic loop, stopTracking).
+        submissionCoordinator.submitDelta(
+            currentDaily = _uiState.value.dailySteps,
+            source = "live",
+            suspectedCheating = _uiState.value.suspectedCheating,
+        )
     }
 
     private fun checkGpsAtCheckpoint(previousSteps: Int, currentSteps: Int) {

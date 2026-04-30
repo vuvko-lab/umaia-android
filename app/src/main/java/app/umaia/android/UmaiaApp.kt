@@ -8,6 +8,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import app.umaia.android.data.local.AppPreferences
 import app.umaia.android.data.work.DailySummaryWorker
+import app.umaia.android.data.work.HealthConnectSyncWorker
 import dagger.hilt.android.HiltAndroidApp
 import java.util.Calendar
 import java.util.TimeZone
@@ -29,6 +30,7 @@ class UmaiaApp : Application(), Configuration.Provider {
         super.onCreate()
         appPreferences.applyLocale()
         scheduleDailySummary()
+        scheduleHealthConnectSync()
     }
 
     /** Mirrors iOS `NotificationService.scheduleDailySummary` — daily 20:00
@@ -39,6 +41,19 @@ class UmaiaApp : Application(), Configuration.Provider {
             .build()
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             DailySummaryWorker.UNIQUE_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request,
+        )
+    }
+
+    /** Periodic HealthConnect → server sync. Approximates iOS's HK
+     *  background observer: WorkManager wakes ~every 2h, reads today's HC
+     *  step total, reconciles with the server via the coordinator, and
+     *  submits any unflushed delta. KEEP makes it idempotent across launches. */
+    private fun scheduleHealthConnectSync() {
+        val request = PeriodicWorkRequestBuilder<HealthConnectSyncWorker>(2, TimeUnit.HOURS).build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            HealthConnectSyncWorker.UNIQUE_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             request,
         )
