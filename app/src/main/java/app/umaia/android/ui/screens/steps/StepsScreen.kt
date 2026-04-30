@@ -54,7 +54,11 @@ fun StepsScreen(
     val winnerState by winnerViewModel.uiState.collectAsState()
     val leaderboardState by leaderboardViewModel.uiState.collectAsState()
     val profileState by profileViewModel.uiState.collectAsState()
-    LaunchedEffect(Unit) { profileViewModel.load() }
+    val welcome by viewModel.welcome.collectAsState()
+    LaunchedEffect(Unit) {
+        profileViewModel.load()
+        viewModel.checkWelcome()
+    }
     // When the local monthly Nur first crosses the target, refresh the
     // server-authoritative podium status so the Walk tab UI flips through
     // CongratsBanner states accurately.
@@ -197,6 +201,26 @@ fun StepsScreen(
                 onDismiss = { showNutritionSheet = false }
             )
         }
+    }
+
+    // v1.3.4: first-visit + return-after-gap dialogs surfaced from the Walk
+    // tab (the iOS hosting site). v1.3 deletion of Dashboard left these
+    // composables orphaned; now StepsViewModel.checkWelcome decides on first
+    // composition which (if any) to show.
+    when (val w = welcome) {
+        is WelcomeOverlay.FirstVisit -> {
+            app.umaia.android.ui.components.WelcomeDialog(
+                onDismiss = { viewModel.dismissWelcome() }
+            )
+        }
+        is WelcomeOverlay.Returning -> {
+            app.umaia.android.ui.components.ReturnWelcomeDialog(
+                daysAway = w.daysAway,
+                nurBonus = w.nurBonus,
+                onDismiss = { viewModel.dismissWelcome() }
+            )
+        }
+        WelcomeOverlay.None -> Unit
     }
 }
 

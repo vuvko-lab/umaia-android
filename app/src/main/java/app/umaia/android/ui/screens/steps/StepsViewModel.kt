@@ -19,6 +19,18 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/**
+ * v1.3.4: which welcome dialog (if any) to render on first composition.
+ * Mirrors iOS StepsScreen.maybeShowWelcome — first session shows the full
+ * intro; later same-day sessions show nothing; sessions after ≥1 day away
+ * show the return dialog with a Nur bonus.
+ */
+sealed class WelcomeOverlay {
+    object None : WelcomeOverlay()
+    object FirstVisit : WelcomeOverlay()
+    data class Returning(val daysAway: Int, val nurBonus: Int) : WelcomeOverlay()
+}
+
 data class StepsUiState(
     val dailySteps: Int = 0,
     val totalSteps: Int = 0,
@@ -77,6 +89,37 @@ class StepsViewModel @Inject constructor(
     }
 
     fun hasClaimedShareNurToday(): Boolean = gamePreferences.hasClaimedShareNurToday()
+
+    private val _welcome = MutableStateFlow<WelcomeOverlay>(WelcomeOverlay.None)
+    val welcome: StateFlow<WelcomeOverlay> = _welcome.asStateFlow()
+
+    /**
+     * Compute which welcome dialog to show, based on `isWelcomeShown(uid)` and
+     * `daysSinceLastVisit()`. Idempotent: subsequent calls per session see the
+     * dialog already dismissed (FirstVisit only fires once per uid; returning
+     * dialog is one-shot per session).
+     */
+    fun checkWelcome() {
+        val uid = authService.currentUserId ?: return
+        if (_welcome.value !is WelcomeOverlay.None) return  // already deciding
+        when {
+            !gamePreferences.isWelcomeShown(uid) -> _welcome.value = WelcomeOverlay.FirstVisit
+            else -> {
+                val days = gamePreferences.daysSinceLastVisit()
+                if (days >= 1) {
+                    val bonus = (days * 5).coerceAtMost(50)
+                    _welcome.value = WelcomeOverlay.Returning(daysAway = days, nurBonus = bonus)
+                }
+            }
+        }
+        gamePreferences.recordVisit()
+    }
+
+    fun dismissWelcome() {
+        val uid = authService.currentUserId ?: return
+        gamePreferences.markWelcomeShown(uid)
+        _welcome.value = WelcomeOverlay.None
+    }
 
     /**
      * Cold-start daily-step seed. Reads the persisted `dailySteps`, but resets
