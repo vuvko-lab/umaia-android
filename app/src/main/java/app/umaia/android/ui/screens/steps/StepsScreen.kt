@@ -42,6 +42,7 @@ import app.umaia.android.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StepsScreen(
     viewModel: StepsViewModel = hiltViewModel(),
@@ -63,6 +64,7 @@ fun StepsScreen(
         }
     }
     var showClaimSheet by remember { mutableStateOf(false) }
+    var showNutritionSheet by remember { mutableStateOf(false) }
     var showLeaderboard by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
@@ -138,6 +140,7 @@ fun StepsScreen(
                 onClaimTapped = { showClaimSheet = true },
                 onShareTapped = { viewModel.claimDailyShare() },
                 shareNurClaimedToday = shareClaimed,
+                onTakeTest = { showNutritionSheet = true },
             )
         }
 
@@ -183,6 +186,17 @@ fun StepsScreen(
                 showClaimSheet = false
             }
         )
+    }
+
+    if (showNutritionSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showNutritionSheet = false },
+            containerColor = TC.bg,
+        ) {
+            app.umaia.android.ui.screens.nutrition.NutritionScreen(
+                onDismiss = { showNutritionSheet = false }
+            )
+        }
     }
 }
 
@@ -250,6 +264,7 @@ internal fun StepsContent(
     onClaimTapped: () -> Unit = {},
     onShareTapped: () -> Unit = {},
     shareNurClaimedToday: Boolean = false,
+    onTakeTest: (() -> Unit)? = null,
 ) {
     val s = LocalStrings.current
     Column(
@@ -390,6 +405,7 @@ internal fun StepsContent(
             target = winnerStatus?.targetNur ?: WinnerStatusViewModel.MONTHLY_REWARD_COST_NUR,
             todayStepNur = state.nurFromSteps,
             todaySteps = state.dailySteps,
+            onTakeTest = onTakeTest,
         )
 
         // How Nur Works

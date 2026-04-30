@@ -2,6 +2,7 @@ package app.umaia.android.ui.screens.steps
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -208,6 +209,7 @@ fun EarnMoreHints(
     target: Int,
     todayStepNur: Int,
     todaySteps: Int,
+    onTakeTest: (() -> Unit)? = null,
 ) {
     val s = LocalStrings.current
     val remaining = (target - monthlyNur).coerceAtLeast(0)
@@ -223,28 +225,33 @@ fun EarnMoreHints(
 
         if (remaining == 0) {
             HintRow("✅", s.earnMoreMetForToday)
-            return@Column
-        }
+        } else {
+            val today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Almaty"))
+            val daysInMonth = today.lengthOfMonth()
+            val daysLeftInclToday = (daysInMonth - today.dayOfMonth + 1).coerceAtLeast(1)
+            val dailyTotalNurNeeded = kotlin.math.ceil(remaining.toDouble() / daysLeftInclToday).toInt()
+            val dailyStepsNurNeeded = (dailyTotalNurNeeded - DAILY_BONUS_NUR).coerceAtLeast(0)
 
-        val today = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Almaty"))
-        val daysInMonth = today.lengthOfMonth()
-        val daysLeftInclToday = (daysInMonth - today.dayOfMonth + 1).coerceAtLeast(1)
-        val dailyTotalNurNeeded = kotlin.math.ceil(remaining.toDouble() / daysLeftInclToday).toInt()
-        val dailyStepsNurNeeded = (dailyTotalNurNeeded - DAILY_BONUS_NUR).coerceAtLeast(0)
-
-        when {
-            todayStepNur >= dailyStepsNurNeeded -> {
-                HintRow("✅", s.earnMoreMetForToday)
-            }
-            else -> {
-                val needed = app.umaia.android.domain.stepsForDailyNur(dailyStepsNurNeeded)
-                if (needed == null) {
-                    HintRow("⚠️", s.earnMoreBeyondCap)
-                } else {
-                    val extra = (needed - todaySteps).coerceAtLeast(0)
-                    HintRow("👣", s.earnMoreToday(extra))
+            when {
+                todayStepNur >= dailyStepsNurNeeded -> {
+                    HintRow("✅", s.earnMoreMetForToday)
+                }
+                else -> {
+                    val needed = app.umaia.android.domain.stepsForDailyNur(dailyStepsNurNeeded)
+                    if (needed == null) {
+                        HintRow("⚠️", s.earnMoreBeyondCap)
+                    } else {
+                        val extra = (needed - todaySteps).coerceAtLeast(0)
+                        HintRow("👣", s.earnMoreToday(extra))
+                    }
                 }
             }
+        }
+
+        // v1.3.3: wisdom-test CTA — sheet-opens NutritionScreen for a one-shot
+        // +8–10 Nur per quiz. Mirrors iOS EarnMoreHints third HintRow.
+        if (onTakeTest != null) {
+            HintRow("❓", s.earnMoreTakeTest, action = onTakeTest)
         }
     }
 }
@@ -255,8 +262,11 @@ fun EarnMoreHints(
 private const val DAILY_BONUS_NUR = 15
 
 @Composable
-private fun HintRow(emoji: String, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+private fun HintRow(emoji: String, text: String, action: (() -> Unit)? = null) {
+    val mod = if (action != null) {
+        Modifier.fillMaxWidth().clickable { action() }
+    } else Modifier
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = mod) {
         Text(emoji, fontSize = 13.sp)
         Spacer(Modifier.width(8.dp))
         Text(text, color = TC.muted, fontSize = 12.sp)

@@ -31,6 +31,7 @@ import app.umaia.android.ui.strings.LocalStrings
 import app.umaia.android.ui.theme.*
 import java.util.Calendar
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
@@ -41,6 +42,7 @@ fun ProfileScreen(
     var sheetDocument by remember { mutableStateOf<LegalDocument?>(null) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var showChangePassword by remember { mutableStateOf(false) }
+    var showWisdomTests by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.load() }
 
@@ -73,6 +75,32 @@ fun ProfileScreen(
             MythologySection()
 
             PillarsSection()
+
+            // v1.3.3: Wisdom tests (Nutrition) entry — sheet-presents NutritionScreen.
+            // Same per-quiz +8–10 Nur reward path as iOS, gated by addQuizNurOnce.
+            val sLocal = LocalStrings.current
+            Surface(
+                onClick = { showWisdomTests = true },
+                shape = RoundedCornerShape(14.dp),
+                color = TC.card,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(14.dp)
+                ) {
+                    Text("📚", fontSize = 18.sp)
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        sLocal.wisdomTestEntry,
+                        color = TC.text,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text("›", color = TC.muted, fontSize = 18.sp)
+                }
+            }
 
             // Settings
             SettingsSection(
@@ -179,6 +207,22 @@ fun ProfileScreen(
             onConfirm = { newPass -> viewModel.changePassword(newPass) },
             onDismiss = { showChangePassword = false; viewModel.clearPasswordState() }
         )
+    }
+
+    if (showWisdomTests) {
+        ModalBottomSheet(
+            onDismissRequest = {
+                showWisdomTests = false
+                // Refresh Nur after the sheet closes — addQuizNurOnce may
+                // have credited new Nur via the server during the session.
+                viewModel.load()
+            },
+            containerColor = TC.bg,
+        ) {
+            app.umaia.android.ui.screens.nutrition.NutritionScreen(
+                onDismiss = { showWisdomTests = false; viewModel.load() }
+            )
+        }
     }
 }
 

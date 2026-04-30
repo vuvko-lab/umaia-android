@@ -178,6 +178,10 @@ class OracleViewModel @Inject constructor(
                     runCatching { nurRepository.addNur(_nurEarned.value + bonus, "oracle_health_assessment") }
                     _nurAlreadyAwarded.value = true
                     prefs.edit().putBoolean(NUR_AWARDED_KEY, true).apply()
+                    // v1.3.3: surface the +Nur to ProfileViewModel + StepsViewModel
+                    // observers so the UMAIA-tab Total Nur reflects the bonus
+                    // immediately (no app restart needed).
+                    gamePreferences.notifyBonusGranted()
                 }
                 _uiState.value = OracleUiState.Result(result)
             } catch (e: Exception) {

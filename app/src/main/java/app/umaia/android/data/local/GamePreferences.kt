@@ -61,6 +61,53 @@ class GamePreferences @Inject constructor(@ApplicationContext ctx: Context) {
 
     private val totalQuizNur: Int get() = if (oracleNurAwarded) 30 else 0
 
+    // ── Wisdom-test (Nutrition) anti-farm (v1.3.3) ───────────────────────────
+
+    /** Set of quizIds the user has already been awarded Nur for. Re-attempting
+     *  the same quiz returns 0 grant — server-side `nurRepository.addNur` is
+     *  also gated on the local return so we don't pump duplicate transactions.
+     *  Mirrors iOS `awardedQuizIds`. */
+    private val awardedQuizIdsKey = "umaia_awarded_quiz_ids"
+
+    /** Returns the amount actually granted (0 if the quiz has been claimed before).
+     *  Emits [bonusNurGranted] on grant so observers (StepsViewModel, ProfileViewModel)
+     *  refresh their displayed totals immediately. */
+    fun addQuizNurOnce(quizId: String, amount: Int): Int {
+        if (amount <= 0) return 0
+        val ids = prefs.getStringSet(awardedQuizIdsKey, emptySet()).orEmpty().toMutableSet()
+        if (quizId in ids) return 0
+        ids.add(quizId)
+        prefs.edit().putStringSet(awardedQuizIdsKey, ids).apply()
+        addBonusNur(amount)
+        _bonusNurGranted.tryEmit(Unit)
+        return amount
+    }
+
+    /** Lets callers outside this class (Oracle completion) trigger the same
+     *  cross-tab refresh as a daily-share / quiz grant — used after the
+     *  server-side `nurRepository.addNur` for Oracle, which writes directly
+     *  to `user_coins.balance` without going through the local quiz path. */
+    fun notifyBonusGranted() {
+        _bonusNurGranted.tryEmit(Unit)
+    }
+
+    fun hasAwardedQuizNur(quizId: String): Boolean =
+        quizId in prefs.getStringSet(awardedQuizIdsKey, emptySet()).orEmpty()
+
+    // ── Nutrition category progression (v1.3.3) ──────────────────────────────
+
+    private val nutritionCompletedKey = "umaia_nutrition_completed_categories"
+
+    fun completedNutritionCategories(): List<String> =
+        prefs.getStringSet(nutritionCompletedKey, emptySet()).orEmpty().toList()
+
+    fun markNutritionCategoryCompleted(category: String) {
+        val current = prefs.getStringSet(nutritionCompletedKey, emptySet()).orEmpty().toMutableSet()
+        if (current.add(category)) {
+            prefs.edit().putStringSet(nutritionCompletedKey, current).apply()
+        }
+    }
+
     /** Accumulated non-step bonus Nur (daily-share, future bonuses). Bumped
      *  by [claimDailyShareNur]; included in [totalNur] so it propagates into
      *  the UMAIA-tab Total Nur stat without affecting server-truth monthly

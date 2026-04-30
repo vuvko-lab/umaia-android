@@ -282,6 +282,10 @@ data class AppStrings(
     val earnMoreToday: (Int) -> String,
     val earnMoreMetForToday: String,
     val earnMoreBeyondCap: String,
+
+    // ── v1.3.3 — Wisdom test (Nutrition) ──────────────────────────────────────
+    val earnMoreTakeTest: String,
+    val wisdomTestEntry: String,
 )
 
 // ── CompositionLocal ──────────────────────────────────────────────────────────
@@ -555,6 +559,8 @@ Now you are part of this movement. Your motion is not just exercise. It is the s
     earnMoreToday = { extra -> "Walk ~${"%,d".format(extra)} more steps today" },
     earnMoreMetForToday = "You've hit today's pace — come back tomorrow",
     earnMoreBeyondCap = "Walk as much as you can today",
+    earnMoreTakeTest = "Take a wisdom test (+8–10 Nur)",
+    wisdomTestEntry = "Wisdom tests",
 )
 
 // ── Russian ───────────────────────────────────────────────────────────────────
@@ -831,6 +837,8 @@ val RuStrings = AppStrings(
     earnMoreToday = { extra -> "Пройди ещё ~${"%,d".format(extra)} шагов сегодня" },
     earnMoreMetForToday = "Сегодняшний темп выполнен — заходи завтра",
     earnMoreBeyondCap = "Пройди сегодня как можно больше",
+    earnMoreTakeTest = "Пройди тест мудрости (+8–10 Нур)",
+    wisdomTestEntry = "Тесты мудрости",
 )
 
 // ── Kazakh ───────────────────────────────────────────────────────────────────
@@ -1100,4 +1108,6 @@ val KkStrings = AppStrings(
     earnMoreToday = { extra -> "Бүгін тағы ~${"%,d".format(extra)} қадам жаса" },
     earnMoreMetForToday = "Бүгінгі екпін орындалды — ертең қайт",
     earnMoreBeyondCap = "Бүгін мүмкіндігінше көп жүр",
+    earnMoreTakeTest = "Даналық тестін тапсыр (+8–10 Нұр)",
+    wisdomTestEntry = "Даналық тестілері",
 )
