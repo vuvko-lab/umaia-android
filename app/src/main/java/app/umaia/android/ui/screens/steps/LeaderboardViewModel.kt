@@ -2,6 +2,8 @@ package app.umaia.android.ui.screens.steps
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.umaia.android.data.local.GamePreferences
+import app.umaia.android.data.notification.UmaiaNotifications
 import app.umaia.android.domain.repository.LeaderboardData
 import app.umaia.android.domain.repository.LeaderboardPeriod
 import app.umaia.android.domain.repository.ProfileRepository
@@ -28,7 +30,9 @@ data class LeaderboardUiState(
 @HiltViewModel
 class LeaderboardViewModel @Inject constructor(
     private val stepRepository: StepRepository,
-    private val profileRepository: ProfileRepository
+    private val profileRepository: ProfileRepository,
+    private val gamePreferences: GamePreferences,
+    private val notifications: UmaiaNotifications,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LeaderboardUiState())
@@ -61,6 +65,7 @@ class LeaderboardViewModel @Inject constructor(
                 stepRepository.getLeaderboard(_uiState.value.period, companyCode)
             }.onSuccess { data ->
                 _uiState.update { it.copy(data = data, isLoading = false) }
+                detectTopRankDrop(data)
             }.onFailure { e ->
                 _uiState.update { it.copy(error = e.message, isLoading = false) }
             }
@@ -73,5 +78,24 @@ class LeaderboardViewModel @Inject constructor(
         _uiState.update { it.copy(period = period) }
         isRefreshing = false
         refresh()
+    }
+
+    /**
+     * v1.4.0: rank-drop notification. Mirrors iOS `notifyTopRankDrop`. We
+     * only watch the MONTHLY period — that's the cohort that drives the
+     * paid reward — and only fire on the transition top-3 → outside-top-3.
+     * GamePreferences keys the last-known status by periodId so a fresh
+     * month never spuriously fires.
+     */
+    private fun detectTopRankDrop(data: LeaderboardData) {
+        if (_uiState.value.period != LeaderboardPeriod.MONTHLY) return
+        val rank = data.myRank ?: return
+        val periodId = gamePreferences.currentMonthPeriodId
+        val wasTopThree = gamePreferences.lastWasTopThree(periodId)
+        val isTopThree = rank in 1..3
+        if (wasTopThree && !isTopThree) {
+            notifications.notifyTopRankDrop(rank)
+        }
+        gamePreferences.setLastTopThreeStatus(periodId, isTopThree)
     }
 }

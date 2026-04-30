@@ -82,6 +82,13 @@ interface StepRepository {
      * fetch the public-pool leaderboard (everyone with no company assigned).
      */
     suspend fun getLeaderboard(period: LeaderboardPeriod, companyCode: String?): LeaderboardData
+
+    /**
+     * Sum of accepted steps the server has recorded for the current user
+     * today (Asia/Almaty). Mirrors iOS `getTodayServerSteps()` — used to
+     * reconcile multi-device users where local + server can drift.
+     */
+    suspend fun getTodayServerSteps(): Int
 }
 
 // ── Reward Claims ────────────────────────────────────────────────────────────

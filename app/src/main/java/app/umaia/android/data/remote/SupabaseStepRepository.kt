@@ -142,4 +142,25 @@ class SupabaseStepRepository @Inject constructor(private val db: PostgrestClient
         SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("Asia/Almaty")
         }.format(Date())
+
+    @Serializable
+    private data class StepCountRow(val step_count: Int)
+
+    override suspend fun getTodayServerSteps(): Int {
+        val uid = db.userId
+        return runCatching {
+            db.select<List<StepCountRow>>(
+                table = "user_steps",
+                columns = "step_count",
+                filters = mapOf(
+                    "user_id" to uid,
+                    "step_date" to almatyTodayString(),
+                    "rejected" to "false",
+                )
+            ).sumOf { it.step_count }
+        }.getOrElse {
+            android.util.Log.e("UmaiaSteps", "getTodayServerSteps FAILED: ${it.message}", it)
+            0
+        }
+    }
 }

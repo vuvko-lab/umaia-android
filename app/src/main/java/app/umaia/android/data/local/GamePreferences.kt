@@ -280,6 +280,28 @@ class GamePreferences @Inject constructor(@ApplicationContext ctx: Context) {
         prefs.edit().putBoolean(companyChoiceMadeKey(userId), true).apply()
     }
 
+    // ── Top-3 rank tracking (v1.4.0) ─────────────────────────────────────────
+    //
+    // iOS persists `lastTop3Status` (Bool) + `lastTop3CheckPeriod` to detect
+    // the moment a user falls out of the monthly top 3. Mirrors keys here so
+    // a rank-drop notification only fires once per (period, transition).
+
+    private val lastTop3PeriodKey = "umaia_last_top3_period"
+    private val lastTop3StatusKey = "umaia_last_top3_status"  // 1 = was top-3, 0 = was outside
+
+    /** True if our last sample said "in top 3" for the given periodId. */
+    fun lastWasTopThree(periodId: String): Boolean {
+        if (prefs.getString(lastTop3PeriodKey, null) != periodId) return false
+        return prefs.getBoolean(lastTop3StatusKey, false)
+    }
+
+    fun setLastTopThreeStatus(periodId: String, isTopThree: Boolean) {
+        prefs.edit()
+            .putString(lastTop3PeriodKey, periodId)
+            .putBoolean(lastTop3StatusKey, isTopThree)
+            .apply()
+    }
+
     // ── Welcome / return dialogs ─────────────────────────────────────────────
 
     private var welcomeShownUid: String?

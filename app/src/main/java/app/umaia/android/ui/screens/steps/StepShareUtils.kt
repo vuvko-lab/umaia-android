@@ -267,7 +267,22 @@ object StepShareUtils {
                 putExtra(android.content.Intent.EXTRA_STREAM, uri)
                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            context.startActivity(android.content.Intent.createChooser(intent, "Share Step Image"))
+            // v1.4.0: chooser callback fires `ShareCompletionReceiver` only when
+            // the user actually picks an app — faithful Android equivalent of
+            // iOS `completionWithItemsHandler { completed in … }`. The receiver
+            // grants the daily +10 Nur via [GamePreferences.claimDailyShareNur].
+            val callbackIntent = android.content.Intent(
+                context, ShareCompletionReceiver::class.java
+            )
+            val flagMutable = android.app.PendingIntent.FLAG_IMMUTABLE or
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT
+            val pendingIntent = android.app.PendingIntent.getBroadcast(
+                context, 0, callbackIntent, flagMutable
+            )
+            val chooser = android.content.Intent.createChooser(
+                intent, "Share Step Image", pendingIntent.intentSender
+            )
+            context.startActivity(chooser)
             true
         } catch (e: Exception) {
             android.util.Log.e("StepShare", "Failed to share image", e)

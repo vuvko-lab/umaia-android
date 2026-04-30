@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <!-- v1.4.0: local reward-unlock + rank-drop notifications. Runtime
+         permission required on Android 13+ — requested from StepsScreen
+         on first composition via RequestPermission contract. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <queries>
         <!-- Legacy standalone Health Connect app (Android 13 and below) -->
@@ -58,6 +62,13 @@
                 <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
         </activity>
+
+        <!-- v1.4.0: Receives Intent.EXTRA_CHOSEN_COMPONENT_INTENT_SENDER from
+             share-image chooser so we credit +10 daily-share Nur only when the
+             user actually picks an app (mirrors iOS completionWithItemsHandler). -->
+        <receiver
+            android:name=".ui.screens.steps.ShareCompletionReceiver"
+            android:exported="false" />
 
         <!-- FileProvider for sharing images -->
         <provider

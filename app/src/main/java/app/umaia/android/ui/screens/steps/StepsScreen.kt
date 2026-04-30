@@ -142,7 +142,11 @@ fun StepsScreen(
                 winnerStatus = winnerState.status,
                 alreadyClaimed = winnerState.alreadyClaimed,
                 onClaimTapped = { showClaimSheet = true },
-                onShareTapped = { viewModel.claimDailyShare() },
+                // v1.4.0: claim moved to ShareCompletionReceiver (chooser
+                // callback) so Nur is granted only on real share-completion.
+                // The button-tap callback is left wired for badge-state
+                // recomposition, but no longer claims directly.
+                onShareTapped = { /* receiver claims */ },
                 shareNurClaimedToday = shareClaimed,
                 onTakeTest = { showNutritionSheet = true },
             )

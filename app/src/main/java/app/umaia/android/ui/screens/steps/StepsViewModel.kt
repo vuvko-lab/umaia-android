@@ -70,6 +70,7 @@ class StepsViewModel @Inject constructor(
     private val authService: AuthService,
     private val stepBackfillService: app.umaia.android.data.sensor.StepBackfillService,
     private val nurRepository: app.umaia.android.domain.repository.NurRepository,
+    private val notifications: app.umaia.android.data.notification.UmaiaNotifications,
 ) : ViewModel() {
 
     /**
@@ -365,6 +366,8 @@ class StepsViewModel @Inject constructor(
         if (gamePreferences.isUnlockNotified(rewardId, periodId, uid)) return
         gamePreferences.markUnlockNotified(rewardId, periodId, uid)
         analytics.notifyRewardUnlocked(rewardId, periodId, uid, partner = "Umaia", item = "T-shirt")
+        // v1.4.0: also fire a system tray notification (mirrors iOS).
+        notifications.notifyRewardUnlocked(partner = "Umaia", item = "T-shirt")
     }
 
     private fun startSubmitLoop() {
