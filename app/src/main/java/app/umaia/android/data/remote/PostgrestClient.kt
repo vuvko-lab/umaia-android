@@ -30,11 +30,17 @@ class PostgrestClient @Inject constructor(@PublishedApi internal val authService
         table: String,
         columns: String = "*",
         filters: Map<String, String> = emptyMap(),
+        rawFilters: List<Pair<String, String>> = emptyList(),
         single: Boolean = false
     ): T = withContext(Dispatchers.IO) {
         val urlBuilder = "${authService.baseUrl}/rest/v1/$table".toHttpUrl().newBuilder()
             .addQueryParameter("select", columns)
         filters.forEach { (k, v) -> urlBuilder.addQueryParameter(k, "eq.$v") }
+        // rawFilters values are passed verbatim (e.g. "gte.2026-04-30T19:00:00Z").
+        // List-of-pairs lets us send multiple operators on the same column,
+        // which a Map<String, String> can't express (e.g. submitted_at gte X
+        // AND submitted_at lt Y).
+        rawFilters.forEach { (k, v) -> urlBuilder.addQueryParameter(k, v) }
 
         val request = Request.Builder()
             .url(urlBuilder.build())
@@ -52,7 +58,7 @@ class PostgrestClient @Inject constructor(@PublishedApi internal val authService
         columns: String = "*",
         filters: Map<String, String> = emptyMap(),
         single: Boolean = false
-    ): T? = runCatching { select<T>(table, columns, filters, single) }.getOrNull()
+    ): T? = runCatching { select<T>(table, columns, filters, single = single) }.getOrNull()
 
     // ── INSERT ────────────────────────────────────────────────────────────────
 

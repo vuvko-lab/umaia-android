@@ -100,6 +100,10 @@ dependencies {
 
     implementation(libs.health.connect)
 
+    implementation(libs.work.runtime)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.androidx.compiler)
+
     implementation(libs.posthog)
     implementation(libs.appcompat)
 

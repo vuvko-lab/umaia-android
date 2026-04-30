@@ -7,6 +7,7 @@ import app.umaia.android.domain.repository.StepRepository
 import app.umaia.android.domain.repository.StepSubmitResult
 import kotlinx.serialization.Serializable
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
@@ -90,12 +91,6 @@ class SupabaseStepRepository @Inject constructor(private val db: PostgrestClient
 
     override suspend fun getLeaderboard(period: LeaderboardPeriod, companyCode: String?): LeaderboardData {
         val uid = db.userId
-        val params = buildMap<String, String> {
-            // Daily leaderboard follows Almaty local calendar day (server attributes step_date in Asia/Almaty).
-            if (period == LeaderboardPeriod.DAILY) put("p_date", almatyTodayString())
-            // Only include p_company when set — absence equals NULL = public-pool.
-            if (!companyCode.isNullOrBlank()) put("p_company", companyCode)
-        }
         val function = when (period) {
             LeaderboardPeriod.DAILY   -> "get_leaderboard_daily"
             LeaderboardPeriod.WEEKLY  -> "get_leaderboard_weekly"
@@ -103,15 +98,51 @@ class SupabaseStepRepository @Inject constructor(private val db: PostgrestClient
             LeaderboardPeriod.ALLTIME -> "get_leaderboard_alltime"
         }
 
-        val rows: List<LeaderboardRow> = runCatching<List<LeaderboardRow>> {
-            db.rpc<List<LeaderboardRow>>(function, params)
-        }.getOrElse {
-            android.util.Log.e("UmaiaSteps", "getLeaderboard($period, $companyCode) FAILED: ${it.message}", it)
-            emptyList()
+        // Server stamps `step_date := CURRENT_DATE` in UTC, but the app
+        // reports an Asia/Almaty calendar day. We query the RPC with
+        // `p_date = almatyTodayString()` and accept that **peer** rows are
+        // empty during the ~5h Almaty-morning boundary window (when no
+        // server rows yet have step_date = Almaty-today). The user's own row
+        // is overlaid precisely below via `overrideMyRow` + a `submitted_at`
+        // range query, so the user always sees their own correct totals
+        // even when the peer list is sparse. The proper fix is server-side
+        // (alter the trigger to use `(now() AT TIME ZONE 'Asia/Almaty')`).
+        val rows: List<LeaderboardRow> = run {
+            val params = buildMap<String, String> {
+                if (period == LeaderboardPeriod.DAILY) put("p_date", almatyTodayString())
+                if (!companyCode.isNullOrBlank()) put("p_company", companyCode)
+            }
+            runCatching<List<LeaderboardRow>> {
+                db.rpc<List<LeaderboardRow>>(function, params)
+            }.getOrElse {
+                android.util.Log.e("UmaiaSteps", "getLeaderboard($period, $companyCode) FAILED: ${it.message}", it)
+                emptyList()
+            }
         }
 
         android.util.Log.d("UmaiaSteps", "getLeaderboard($period, $companyCode): ${rows.size} rows")
-        val sorted = rows.sortedByDescending { it.total_steps }
+
+        // Server RPCs anchor `step_date` filters to UTC `CURRENT_DATE`, but the
+        // app reports an Asia/Almaty calendar window. For DAILY and MONTHLY,
+        // overwrite the user's own row with a precise Almaty-window query
+        // against `user_steps` (filtered by `submitted_at`). Peers' rows can't
+        // be corrected client-side (RLS), so they remain slightly imprecise
+        // around the TZ boundary (~5h on the 1st of each month for monthly,
+        // ~5h every Almaty morning for daily) — pending a server `p_date` /
+        // `SET TIMEZONE 'Asia/Almaty'` fix.
+        val mergedRows: List<LeaderboardRow> = when (period) {
+            LeaderboardPeriod.DAILY -> {
+                val (start, end) = almatyDayUtcRange()
+                overrideMyRow(rows, uid, fetchMyStatsInRange(start, end))
+            }
+            LeaderboardPeriod.MONTHLY -> {
+                val (start, end) = almatyMonthUtcRange()
+                overrideMyRow(rows, uid, fetchMyStatsInRange(start, end))
+            }
+            else -> rows
+        }
+
+        val sorted = mergedRows.sortedByDescending { it.total_steps }
         val myRow = sorted.firstOrNull { it.user_id == uid }
         val top50 = sorted.take(50)
         val entries = top50.mapIndexed { index, row ->
@@ -135,32 +166,113 @@ class SupabaseStepRepository @Inject constructor(private val db: PostgrestClient
         )
     }
 
-    /** Current date string (yyyy-MM-dd) in Asia/Almaty (UTC+5). All daily
-     *  step/leaderboard bookkeeping is anchored to Almaty local day so that
-     *  multiple devices in different zones still aggregate to the same row. */
+    @Serializable
+    private data class ProfileNameRow(val full_name: String? = null)
+
+    /** Best-effort fetch of the calling user's `profiles.full_name`. Used
+     *  when synthesizing a leaderboard row during the Almaty/UTC boundary
+     *  window so the row matches what other users would see. Falls back to
+     *  the server's `Nomad-<6 chars>` default. */
+    private suspend fun fetchMyDisplayName(uid: String): String {
+        val name: String? = runCatching {
+            val row: ProfileNameRow? = db.selectOptional(
+                table = "profiles",
+                columns = "full_name",
+                filters = mapOf("user_id" to uid),
+                single = true,
+            )
+            row?.full_name?.trim()?.takeUnless { it.isEmpty() }
+        }.getOrNull()
+        return name ?: "Nomad-${uid.take(6)}"
+    }
+
+    /** Replace (or insert) the calling user's row in [rows] with precise
+     *  `(steps, nur)` from a `user_steps` query. Resets rank to 0 so the
+     *  caller re-ranks by sort order. When synthesizing a fresh row (no
+     *  existing entry — e.g. the RPC returned 0 rows for this user during
+     *  the Almaty/UTC boundary window), fills in the user's profile name so
+     *  the row doesn't render as "Anonymous". */
+    private suspend fun overrideMyRow(
+        rows: List<LeaderboardRow>,
+        uid: String,
+        precise: Pair<Int, Int>,
+    ): List<LeaderboardRow> {
+        val (steps, nur) = precise
+        val existing = rows.firstOrNull { it.user_id == uid }
+        val displayName = existing?.display_name ?: fetchMyDisplayName(uid)
+        val replacement = (existing ?: LeaderboardRow(user_id = uid, total_steps = 0))
+            .copy(display_name = displayName, total_steps = steps, total_nur = nur, rank = 0)
+        return if (existing != null) rows.map { if (it.user_id == uid) replacement else it }
+        else rows + replacement
+    }
+
+    /** Current date string (yyyy-MM-dd) in Asia/Almaty (UTC+5). Used as the
+     *  `p_date` parameter to `get_leaderboard_daily`. */
     private fun almatyTodayString(): String =
         SimpleDateFormat("yyyy-MM-dd", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("Asia/Almaty")
         }.format(Date())
 
-    @Serializable
-    private data class StepCountRow(val step_count: Int)
+    /** ISO-8601 UTC instants for the Asia/Almaty current calendar day bounds. */
+    private fun almatyDayUtcRange(): Pair<String, String> {
+        val isoUtc = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+        val cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Almaty")).apply {
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        val start = isoUtc.format(cal.time)
+        cal.add(Calendar.DAY_OF_MONTH, 1)
+        val end = isoUtc.format(cal.time)
+        return start to end
+    }
+
+    /** Sum (step_count, nur_awarded) for the calling user across an arbitrary
+     *  `submitted_at` UTC range. Only reads own rows (RLS-safe). */
+    private suspend fun fetchMyStatsInRange(startUtc: String, endUtc: String): Pair<Int, Int> {
+        val uid = db.userId
+        @Serializable data class Row(val step_count: Int, val nur_awarded: Int)
+        return runCatching {
+            val rows: List<Row> = db.select(
+                table = "user_steps",
+                columns = "step_count,nur_awarded",
+                filters = mapOf("user_id" to uid, "rejected" to "false"),
+                rawFilters = listOf(
+                    "submitted_at" to "gte.$startUtc",
+                    "submitted_at" to "lt.$endUtc",
+                ),
+            )
+            rows.fold(0 to 0) { (s, n), r -> (s + r.step_count) to (n + r.nur_awarded) }
+        }.getOrElse {
+            android.util.Log.e("UmaiaSteps", "fetchMyStatsInRange($startUtc..$endUtc) FAILED: ${it.message}", it)
+            0 to 0
+        }
+    }
+
+    /** ISO-8601 UTC instants for the Asia/Almaty current month bounds —
+     *  `[start, end)` with end-exclusive. Used to query the user's own
+     *  `user_steps` rows precisely by `submitted_at`, so the monthly hero
+     *  on Walk shows the right Almaty-month totals even when the server's
+     *  `get_leaderboard_monthly` RPC is anchored to the UTC month (which
+     *  diverges in the first 5h of an Almaty month). */
+    private fun almatyMonthUtcRange(): Pair<String, String> {
+        val isoUtc = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+        val cal = Calendar.getInstance(TimeZone.getTimeZone("Asia/Almaty")).apply {
+            set(Calendar.DAY_OF_MONTH, 1)
+            set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+        }
+        val start = isoUtc.format(cal.time)
+        cal.add(Calendar.MONTH, 1)
+        val end = isoUtc.format(cal.time)
+        return start to end
+    }
 
     override suspend fun getTodayServerSteps(): Int {
-        val uid = db.userId
-        return runCatching {
-            db.select<List<StepCountRow>>(
-                table = "user_steps",
-                columns = "step_count",
-                filters = mapOf(
-                    "user_id" to uid,
-                    "step_date" to almatyTodayString(),
-                    "rejected" to "false",
-                )
-            ).sumOf { it.step_count }
-        }.getOrElse {
-            android.util.Log.e("UmaiaSteps", "getTodayServerSteps FAILED: ${it.message}", it)
-            0
-        }
+        val (start, end) = almatyDayUtcRange()
+        return fetchMyStatsInRange(start, end).first
     }
 }

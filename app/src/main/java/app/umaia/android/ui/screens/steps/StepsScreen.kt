@@ -77,6 +77,22 @@ fun StepsScreen(
         ActivityResultContracts.RequestPermission()
     ) { viewModel.onPermissionResult() }
 
+    // POST_NOTIFICATIONS runtime permission (Android 13+). Requested once on
+    // first composition; needed for daily-summary, reward-unlock, and rank-drop
+    // notifications. Mirrors iOS UNUserNotificationCenter authorization request
+    // at app launch.
+    val notifPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* result discarded — UmaiaNotifications gates on areNotificationsEnabled() */ }
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            val granted = androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.POST_NOTIFICATIONS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            if (!granted) notifPermLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
     // Health Connect permission flow:
     //   1. Try the SDK contract first (canonical path; requires our rationale Activity
     //      to be discoverable — provided by HealthConnectRationaleActivity).

@@ -84,6 +84,16 @@ class StepPreferences @Inject constructor(@ApplicationContext ctx: Context) {
         prefs.edit().putInt(lastSubmittedKey(date), total).apply()
     }
 
+    /** Epoch millis of the last *attempted* server submit (whether the server
+     *  ultimately accepted or rejected the row). Used as a client-side gate
+     *  mirroring the server's 30s rule (`too_frequent`). Advanced on every
+     *  HTTP-2xx response (including `rejected=true`) so back-to-back retries
+     *  don't get rejected again immediately. The data anchor
+     *  (`lastSubmittedDailyTotal`) advances only on `rejected=false`. */
+    var lastSubmitAttemptAt: Long
+        get() = prefs.getLong("step_last_submit_attempt_at", 0L)
+        set(v) { prefs.edit().putLong("step_last_submit_attempt_at", v).apply() }
+
     /** Call whenever the user is actively using the app / steps are flowing. */
     fun recordActive() {
         val now = System.currentTimeMillis()

@@ -12,10 +12,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Local notifications for the Walk-tab reward flow. Mirrors iOS
- * `NotificationService.notifyRewardUnlocked` + `notifyTopRankDrop`. The
- * daily-summary 8 PM job is intentionally deferred — it needs `WorkManager`
- * which isn't currently a dependency; tracked as a follow-up.
+ * Local notifications. Mirrors iOS `NotificationService` —
+ * `scheduleDailySummary` (delivered by [DailySummaryWorker]),
+ * `notifyRewardUnlocked`, and `notifyTopRankDrop`.
  *
  * Channels are created lazily per-call (idempotent on Android 26+) so the
  * helper has no init cost on devices below O.
@@ -26,6 +25,21 @@ class UmaiaNotifications @Inject constructor(
 ) {
 
     private val manager: NotificationManagerCompat = NotificationManagerCompat.from(context)
+
+    /** Posts the localized "check today's Nur" reminder. Called from
+     *  [DailySummaryWorker] at 20:00 Asia/Almaty. */
+    fun notifyDailySummary(title: String, body: String) {
+        ensureChannel(CHANNEL_DAILY_SUMMARY, "Daily summary", "Reminds you to check today's Nur and your rank.")
+        if (!hasPostPermission()) return
+        val notification = NotificationCompat.Builder(context, CHANNEL_DAILY_SUMMARY)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setAutoCancel(true)
+            .build()
+        runCatching { manager.notify(NOTIF_ID_DAILY_SUMMARY, notification) }
+    }
 
     /** Posts the reward-unlocked notification. iOS dedupes per
      *  (rewardId, periodId, userId) via UserDefaults; on Android the dedupe
@@ -75,7 +89,9 @@ class UmaiaNotifications @Inject constructor(
     companion object {
         const val CHANNEL_REWARD_UNLOCK = "umaia_reward_unlock"
         const val CHANNEL_RANK_DROP = "umaia_rank_drop"
+        const val CHANNEL_DAILY_SUMMARY = "umaia_daily_summary"
         private const val NOTIF_ID_REWARD_UNLOCK = 1001
         private const val NOTIF_ID_RANK_DROP = 1002
+        private const val NOTIF_ID_DAILY_SUMMARY = 1003
     }
 }
