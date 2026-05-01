@@ -42,6 +42,12 @@ data class StepsUiState(
      *  monthly Nur to render the displayed reward-tile progress. */
     val monthlyNurSubtract: Int = 0,
     val nurFromSteps: Int = 0,
+    /** Server-truth Nur earned today (Asia/Almaty) across all sources —
+     *  step Nur + daily share + daily login + Oracle + wisdom quizzes. Used
+     *  by the share image so what the user posts reflects total-day Nur, not
+     *  just the step formula preview. Falls back to [nurFromSteps] until the
+     *  first server fetch completes. */
+    val todayServerNur: Int = 0,
     val reachedMilestones: List<StepMilestone> = emptyList(),
     val nextMilestone: StepMilestone? = null,
     val isSensorAvailable: Boolean = false,
@@ -381,6 +387,13 @@ class StepsViewModel @Inject constructor(
             monthlyNurSubtract = subtract,
             shareClaimedToday = gamePreferences.hasClaimedShareNurToday(),
         )}
+        // Refresh today's full server-truth Nur (steps + bonuses) so the
+        // share image reflects the actual total. Fire-and-forget; falls back
+        // to nurFromSteps if the call fails.
+        viewModelScope.launch {
+            val n = runCatching { stepRepository.getTodayServerNur() }.getOrDefault(0)
+            if (n > 0) _uiState.update { it.copy(todayServerNur = n) }
+        }
     }
 
     /**

@@ -89,6 +89,15 @@ interface StepRepository {
      * reconcile multi-device users where local + server can drift.
      */
     suspend fun getTodayServerSteps(): Int
+
+    /**
+     * Sum of *all* Nur the user has earned today (Asia/Almaty) — including
+     * step Nur, daily share, daily login, Oracle bonus, wisdom quizzes —
+     * via the same `submitted_at`/`created_at` range used by the leaderboard
+     * hero. Returned for the share image so the user-shared screenshot
+     * reflects every Nur source, not just the step formula.
+     */
+    suspend fun getTodayServerNur(): Int
 }
 
 // ── Reward Claims ────────────────────────────────────────────────────────────

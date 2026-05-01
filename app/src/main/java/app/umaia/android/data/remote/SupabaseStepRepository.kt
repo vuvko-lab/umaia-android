@@ -308,4 +308,9 @@ class SupabaseStepRepository @Inject constructor(private val db: PostgrestClient
         val (start, end) = almatyDayUtcRange()
         return fetchMyStatsInRange(start, end).first
     }
+
+    override suspend fun getTodayServerNur(): Int {
+        val (start, end) = almatyDayUtcRange()
+        return fetchMyStatsInRange(start, end).second
+    }
 }

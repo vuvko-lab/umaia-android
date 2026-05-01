@@ -41,7 +41,13 @@ object StepShareUtils {
         context: Context,
         steps: Int,
         nur: Int,
-        stepGoal: Int = 10_000
+        /** Localized "steps today" label — pass `LocalStrings.current.stepsToday`
+         *  from the call site so the image matches the user's chosen language
+         *  (matches iOS `renderTodayStepsImage` which switches on `umaia_language`). */
+        stepsLabel: String,
+        /** Locale used to format the date stamp on the share image. */
+        locale: Locale = Locale.US,
+        stepGoal: Int = 10_000,
     ): Bitmap {
         val width = 1080
         val height = 1920
@@ -81,7 +87,7 @@ object StepShareUtils {
             textSize = 40f
             textAlign = Paint.Align.CENTER
         }
-        canvas.drawText("steps today", width / 2f, 480f, labelPaint)
+        canvas.drawText(stepsLabel, width / 2f, 480f, labelPaint)
 
         // Progress ring background
         val ringRadius = 150f
@@ -121,7 +127,7 @@ object StepShareUtils {
         canvas.drawText("⚡ +$nur Nur", width / 2f, 1100f, nurPaint)
 
         // Date
-        val dateFormat = SimpleDateFormat("MMM d, yyyy", Locale.US)
+        val dateFormat = SimpleDateFormat("MMM d, yyyy", locale)
         val datePaint = Paint().apply {
             color = AndroidColor.parseColor("#888888")
             textSize = 35f
@@ -145,7 +151,9 @@ object StepShareUtils {
     fun createCalendarImage(
         context: Context,
         stepHistory: Map<String, Int>,
-        currentMonth: Calendar = Calendar.getInstance()
+        /** Locale used for the month-name title (e.g. "May 2026" / "Май 2026"). */
+        locale: Locale = Locale.US,
+        currentMonth: Calendar = Calendar.getInstance(),
     ): Bitmap {
         val width = 1080
         val height = 1920
@@ -176,7 +184,7 @@ object StepShareUtils {
             textSize = 50f
             textAlign = Paint.Align.CENTER
         }
-        val monthName = SimpleDateFormat("MMMM yyyy", Locale.US).format(currentMonth.time)
+        val monthName = SimpleDateFormat("MMMM yyyy", locale).format(currentMonth.time)
         canvas.drawText(monthName, width / 2f, 280f, titlePaint)
 
         // Calendar grid

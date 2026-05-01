@@ -381,8 +381,13 @@ internal fun StepsContent(
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // "Nur earned today" includes ALL sources today: step Nur from
+            // user_steps + bonuses from user_coin_transactions (daily share,
+            // login, Oracle, wisdom quizzes). Falls back to the step-only
+            // preview before the first server fetch lands.
+            val totalToday = state.todayServerNur.takeIf { it > 0 } ?: state.nurFromSteps
             Text(s.nurEarnedToday, color = TC.text, fontSize = 14.sp, modifier = Modifier.weight(1f))
-            Text("+${state.nurFromSteps}", color = Gold, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            Text("+$totalToday", color = Gold, fontSize = 22.sp, fontWeight = FontWeight.Bold)
         }
 
         // Per-source data + tap-to-enable for missing permissions
@@ -395,9 +400,12 @@ internal fun StepsContent(
             onEnableSensor = onEnableSensor
         )
 
-        // Share steps
+        // Share steps. Prefer the server-truth total Nur (includes daily share,
+        // login, Oracle, quizzes) so the shared screenshot doesn't undersell.
+        // Falls back to the step-only preview before the first server fetch.
         ShareStepsButton(
-            steps = state.dailySteps, nur = state.nurFromSteps,
+            steps = state.dailySteps,
+            nur = state.todayServerNur.takeIf { it > 0 } ?: state.nurFromSteps,
             onShareTapped = onShareTapped, claimed = shareNurClaimedToday,
         )
 
@@ -802,9 +810,16 @@ private fun buildCalendarGrid(year: Int, month: Int): List<List<Int>> {
 private fun ShareStepsButton(steps: Int, nur: Int, onShareTapped: () -> Unit, claimed: Boolean) {
     val context = LocalContext.current
     val s = LocalStrings.current
+    val locale = remember(s.code) { java.util.Locale.forLanguageTag(s.code) }
     OutlinedButton(
         onClick = {
-            val bitmap = StepShareUtils.createTodayStepsImage(context, steps, nur)
+            val bitmap = StepShareUtils.createTodayStepsImage(
+                context = context,
+                steps = steps,
+                nur = nur,
+                stepsLabel = s.stepsToday,
+                locale = locale,
+            )
             val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
             val fileName = "umaia_steps_${dateFormat.format(java.util.Date())}.png"
             StepShareUtils.saveBitmapAndShare(context, bitmap, fileName)
@@ -851,10 +866,11 @@ private fun ShareNurBadge(claimed: Boolean) {
 private fun ShareCalendarButton(stepHistory: Map<String, Int>, onShareTapped: () -> Unit, claimed: Boolean) {
     val context = LocalContext.current
     val s = LocalStrings.current
+    val locale = remember(s.code) { java.util.Locale.forLanguageTag(s.code) }
     OutlinedButton(
         onClick = {
             val calendar = java.util.Calendar.getInstance()
-            val bitmap = StepShareUtils.createCalendarImage(context, stepHistory, calendar)
+            val bitmap = StepShareUtils.createCalendarImage(context, stepHistory, locale, calendar)
             val dateFormat = java.text.SimpleDateFormat("yyyy-MM", java.util.Locale.US)
             val fileName = "umaia_calendar_${dateFormat.format(java.util.Date())}.png"
             StepShareUtils.saveBitmapAndShare(context, bitmap, fileName)
