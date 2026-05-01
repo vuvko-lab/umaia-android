@@ -362,6 +362,16 @@ class GamePreferences @Inject constructor(@ApplicationContext ctx: Context) {
         }.getOrDefault(0)
     }
 
+    /** Wipes every per-account preference (share dedupe, bonus accumulator,
+     *  awarded-quiz set, oracle award flag, step history per Almaty-day,
+     *  last-top-3 status, completed nutrition categories, …). Called from
+     *  `ProfileViewModel.deleteAccount` so a fresh sign-in on the same device
+     *  doesn't inherit the prior account's "share already claimed", "oracle
+     *  bonus already granted", etc. */
+    fun reset() {
+        prefs.edit().clear().apply()
+    }
+
     companion object {
         /** Daily share-Nur grant. Same value on iOS (`GamePreferences.shareDailyNur`). */
         const val SHARE_DAILY_NUR: Int = 10

@@ -135,7 +135,14 @@ class ProfileViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isDeleting = true, deleteError = null) }
             runCatching {
+                // Wipe ALL local per-account state so a fresh sign-in on the
+                // same device doesn't inherit the prior account's "share
+                // already claimed today", "oracle bonus already granted",
+                // step history, accumulators, etc. Without gamePreferences
+                // here, the next user sees stale UI flags that map to no
+                // server-side row → frustration + lost bonuses.
                 stepPreferences.reset()
+                gamePreferences.reset()
                 authService.deleteAccount()
                 analytics.signedOut()
             }.onFailure { e ->
