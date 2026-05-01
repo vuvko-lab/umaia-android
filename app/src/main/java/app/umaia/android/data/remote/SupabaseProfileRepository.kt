@@ -87,8 +87,12 @@ class SupabaseProfileRepository @Inject constructor(private val db: PostgrestCli
     }
 
     override suspend fun completeOnboarding(tribalRole: String) {
-        @Serializable data class OB(val onboarding_complete: Boolean = true)
-        db.update(OB(), "profiles", mapOf("user_id" to db.userId))
+        // No default values — kotlinx.serialization's default Json config has
+        // `encodeDefaults = false`, so a `Boolean = true` default would be
+        // silently dropped from the request body and PostgREST would never
+        // update the column. Callers must pass the value explicitly.
+        @Serializable data class OB(val onboarding_complete: Boolean)
+        db.update(OB(onboarding_complete = true), "profiles", mapOf("user_id" to db.userId))
         @Serializable data class AssessUpsert(val user_id: String, val tribal_role: String)
         db.upsert(AssessUpsert(db.userId, tribalRole), "health_assessments", onConflict = "user_id")
     }
@@ -102,10 +106,18 @@ class SupabaseProfileRepository @Inject constructor(private val db: PostgrestCli
     }
 
     override suspend fun saveOracleResult(tribalRole: String) {
+        // See completeOnboarding(): no `= true` default — defaults are dropped
+        // from the JSON body by kotlinx.serialization, leaving the column
+        // unchanged on the server. Pass the boolean explicitly so the upsert
+        // actually flips `questionnaire_completed` to true.
         @Serializable data class OracleUpsert(
-            val user_id: String, val tribal_role: String, val questionnaire_completed: Boolean = true
+            val user_id: String, val tribal_role: String, val questionnaire_completed: Boolean
         )
-        db.upsert(OracleUpsert(db.userId, tribalRole), "health_assessments", onConflict = "user_id")
+        db.upsert(
+            OracleUpsert(db.userId, tribalRole, questionnaire_completed = true),
+            "health_assessments",
+            onConflict = "user_id",
+        )
     }
 
     override suspend fun setCompanyCode(code: String): Pair<String, String> {

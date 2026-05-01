@@ -38,6 +38,11 @@ class ProfileViewModel @Inject constructor(
     private val authService: AuthService,
     private val gamePreferences: GamePreferences,
     private val stepPreferences: StepPreferences,
+    /** The same `umaia_prefs` SharedPreferences that backs OracleViewModel
+     *  (health data, tribal role, oracle Nur dedupe). Wiped on
+     *  delete-account so a new sign-in on the same device doesn't see the
+     *  prior account's questionnaire answers. */
+    private val oraclePrefs: android.content.SharedPreferences,
     private val analytics: AnalyticsService,
     val appPreferences: AppPreferences
 ) : ViewModel() {
@@ -143,6 +148,7 @@ class ProfileViewModel @Inject constructor(
                 // server-side row → frustration + lost bonuses.
                 stepPreferences.reset()
                 gamePreferences.reset()
+                oraclePrefs.edit().clear().apply()
                 authService.deleteAccount()
                 analytics.signedOut()
             }.onFailure { e ->
