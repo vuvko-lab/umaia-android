@@ -525,3 +525,45 @@ fun quizzesForCategory(category: NutritionCategory): List<NutritionQuiz> {
     val cardIds = cardsForCategory(category).map { it.id }.toSet()
     return allNutritionQuizzes.filter { it.cardId in cardIds }
 }
+
+// ── Locale-aware accessors ───────────────────────────────────────────────────
+//
+// Mirrors `OracleQuestion.localizedText(code)`. Data classes hold EN/RU/KK in
+// parallel; the screen passes the active code from `LocalStrings.current.code`.
+// Anything other than "en"/"kk" falls back to RU (default-shipped market lang).
+
+fun NutritionCategory.localizedLabel(code: String): String = when (code) {
+    "en" -> labelEn
+    "kk" -> labelKk
+    else -> labelRu
+}
+
+fun NutritionCard.localizedTitle(code: String): String = when (code) {
+    "en" -> title
+    "kk" -> titleKk
+    else -> titleRu
+}
+
+fun NutritionCard.localizedBody(code: String): String = when (code) {
+    "en" -> body
+    "kk" -> bodyKk
+    else -> bodyRu
+}
+
+fun NutritionCard.localizedSwap(code: String): String? = when (code) {
+    "en" -> swap
+    "kk" -> swapKk
+    else -> swapRu
+}
+
+fun NutritionQuiz.localizedQuestion(code: String): String = when (code) {
+    "en" -> question
+    "kk" -> questionKk
+    else -> questionRu
+}
+
+fun NutritionQuizOption.localizedText(code: String): String = when (code) {
+    "en" -> text
+    "kk" -> textKk
+    else -> textRu
+}

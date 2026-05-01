@@ -286,6 +286,21 @@ data class AppStrings(
     // ── v1.3.3 — Wisdom test (Nutrition) ──────────────────────────────────────
     val earnMoreTakeTest: String,
     val wisdomTestEntry: String,
+
+    // ── Nutrition screen chrome (v1.5.x light-theme + i18n pass) ──────────────
+    val nutritionMenuTitle: String,
+    val nutritionMenuSubtitle: String,
+    val nutritionMenuQuote: String,
+    val nutritionStudyAndTest: (study: Int, test: Int) -> String,
+    val nutritionMastered: String,
+    val nutritionLearnIndex: (idx: Int, total: Int) -> String,
+    val nutritionQuizIndex: (idx: Int, total: Int) -> String,
+    val nutritionTakeQuiz: String,
+    val nutritionNextCard: String,
+    val nutritionBack: String,
+    val nutritionNextQuiz: String,
+    val nutritionComplete: String,
+    val nutritionFoodsRichIn: (nutrient: String) -> String,
 )
 
 // ── CompositionLocal ──────────────────────────────────────────────────────────
@@ -561,6 +576,19 @@ Now you are part of this movement. Your motion is not just exercise. It is the s
     earnMoreBeyondCap = "Walk as much as you can today",
     earnMoreTakeTest = "Take a wisdom test (+8–10 Nur)",
     wisdomTestEntry = "Wisdom tests",
+    nutritionMenuTitle = "Wisdom of the Steppe",
+    nutritionMenuSubtitle = "Ancient knowledge, proven by the healers of the tribe",
+    nutritionMenuQuote = "\"A nomad who knows what to eat survives the harshest winter. A nomad who knows what to avoid protects the whole tribe.\"",
+    nutritionStudyAndTest = { study, test -> "$study Study · $test Test" },
+    nutritionMastered = "Mastered",
+    nutritionLearnIndex = { idx, total -> "$idx of $total" },
+    nutritionQuizIndex = { idx, total -> "Quiz $idx of $total" },
+    nutritionTakeQuiz = "Take Quiz →",
+    nutritionNextCard = "Next →",
+    nutritionBack = "← Back",
+    nutritionNextQuiz = "Next Quiz →",
+    nutritionComplete = "Complete ✓",
+    nutritionFoodsRichIn = { n -> "Foods rich in $n" },
 )
 
 // ── Russian ───────────────────────────────────────────────────────────────────
@@ -839,6 +867,19 @@ val RuStrings = AppStrings(
     earnMoreBeyondCap = "Пройди сегодня как можно больше",
     earnMoreTakeTest = "Пройди тест мудрости (+8–10 Нур)",
     wisdomTestEntry = "Тесты мудрости",
+    nutritionMenuTitle = "Мудрость Степи",
+    nutritionMenuSubtitle = "Древнее знание, проверенное целителями племени",
+    nutritionMenuQuote = "«Кочевник, знающий, что есть, переживёт самую суровую зиму. Кочевник, знающий, чего избегать, защитит всё племя.»",
+    nutritionStudyAndTest = { study, test -> "$study уроков · $test тестов" },
+    nutritionMastered = "Освоено",
+    nutritionLearnIndex = { idx, total -> "$idx из $total" },
+    nutritionQuizIndex = { idx, total -> "Тест $idx из $total" },
+    nutritionTakeQuiz = "К тесту →",
+    nutritionNextCard = "Далее →",
+    nutritionBack = "← Назад",
+    nutritionNextQuiz = "Следующий →",
+    nutritionComplete = "Готово ✓",
+    nutritionFoodsRichIn = { n -> "Продукты, богатые $n" },
 )
 
 // ── Kazakh ───────────────────────────────────────────────────────────────────
@@ -1110,4 +1151,17 @@ val KkStrings = AppStrings(
     earnMoreBeyondCap = "Бүгін мүмкіндігінше көп жүр",
     earnMoreTakeTest = "Даналық тестін тапсыр (+8–10 Нұр)",
     wisdomTestEntry = "Даналық тестілері",
+    nutritionMenuTitle = "Дала Даналығы",
+    nutritionMenuSubtitle = "Тайпа емшілерімен дәлелденген ежелгі білім",
+    nutritionMenuQuote = "«Не жейтінін білетін көшпенді ең қатал қысты бастан өткізеді. Неден аулақ болуды білетін көшпенді бүкіл тайпаны қорғайды.»",
+    nutritionStudyAndTest = { study, test -> "$study сабақ · $test тест" },
+    nutritionMastered = "Меңгерілді",
+    nutritionLearnIndex = { idx, total -> "$idx / $total" },
+    nutritionQuizIndex = { idx, total -> "Тест $idx / $total" },
+    nutritionTakeQuiz = "Тестке →",
+    nutritionNextCard = "Келесі →",
+    nutritionBack = "← Артқа",
+    nutritionNextQuiz = "Келесі →",
+    nutritionComplete = "Дайын ✓",
+    nutritionFoodsRichIn = { n -> "$n бай тағамдар" },
 )

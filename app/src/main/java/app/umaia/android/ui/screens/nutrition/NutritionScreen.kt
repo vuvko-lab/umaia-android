@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.umaia.android.domain.model.*
+import app.umaia.android.ui.strings.LocalStrings
 import app.umaia.android.ui.theme.*
 
 private fun categoryColor(cat: NutritionCategory): Color = when (cat) {
@@ -59,6 +60,7 @@ fun NutritionScreen(
 
 @Composable
 private fun MenuPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
+    val s = LocalStrings.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -68,12 +70,12 @@ private fun MenuPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            "Wisdom of the Steppe",
+            s.nutritionMenuTitle,
             color = TC.text, fontSize = 22.sp, fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth()
         )
         Text(
-            "Ancient knowledge, proven by the healers of the tribe",
+            s.nutritionMenuSubtitle,
             color = TC.muted, fontSize = 13.sp, textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
@@ -85,7 +87,7 @@ private fun MenuPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
                 .padding(14.dp)
         ) {
             Text(
-                "\"A nomad who knows what to eat survives the harshest winter. A nomad who knows what to avoid protects the whole tribe.\"",
+                s.nutritionMenuQuote,
                 color = TC.muted, fontSize = 12.sp, textAlign = TextAlign.Center,
                 fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
             )
@@ -109,6 +111,7 @@ private fun CategoryRow(
     unlocked: Boolean,
     onClick: () -> Unit
 ) {
+    val s = LocalStrings.current
     val catColor = categoryColor(category)
     val cards = cardsForCategory(category)
     val quizzes = quizzesForCategory(category)
@@ -119,8 +122,8 @@ private fun CategoryRow(
         shape = RoundedCornerShape(14.dp),
         color = when {
             done -> catColor.copy(alpha = 0.06f)
-            !unlocked -> SurfaceVariant.copy(alpha = 0.15f)
-            else -> SurfaceVariant
+            !unlocked -> TC.cardAlt.copy(alpha = 0.15f)
+            else -> TC.cardAlt
         },
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -134,7 +137,7 @@ private fun CategoryRow(
                     .background(
                         when {
                             done -> catColor.copy(alpha = 0.2f)
-                            !unlocked -> SurfaceVariant.copy(alpha = 0.3f)
+                            !unlocked -> TC.cardAlt.copy(alpha = 0.3f)
                             else -> catColor.copy(alpha = 0.1f)
                         },
                         RoundedCornerShape(14.dp)
@@ -150,16 +153,17 @@ private fun CategoryRow(
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        category.labelEn, color = if (unlocked) TC.text else TC.muted,
+                        category.localizedLabel(s.code),
+                        color = if (unlocked) TC.text else TC.muted,
                         fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f)
                     )
                     if (done) {
-                        Text("Mastered", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text(s.nutritionMastered, color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     }
                 }
                 Text(
-                    "${cards.size} Study · ${quizzes.size} Test",
+                    s.nutritionStudyAndTest(cards.size, quizzes.size),
                     color = TC.muted, fontSize = 12.sp
                 )
             }
@@ -171,6 +175,7 @@ private fun CategoryRow(
 
 @Composable
 private fun LearnPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
+    val s = LocalStrings.current
     val cards = cardsForCategory(state.activeCategory)
     val card = cards.getOrNull(state.cardIndex) ?: return
     val isLast = state.cardIndex == cards.size - 1
@@ -185,7 +190,7 @@ private fun LearnPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
                 Text("‹", color = Gold, fontSize = 20.sp)
             }
             Spacer(Modifier.weight(1f))
-            Text("${state.cardIndex + 1} of ${cards.size}", color = TC.muted, fontSize = 13.sp)
+            Text(s.nutritionLearnIndex(state.cardIndex + 1, cards.size), color = TC.muted, fontSize = 13.sp)
             Spacer(Modifier.weight(1f))
             Spacer(Modifier.width(48.dp)) // balance
         }
@@ -193,7 +198,7 @@ private fun LearnPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
         LinearProgressIndicator(
             progress = { ((state.cardIndex + 1).toFloat() / cards.size).coerceIn(0f, 1f) },
             modifier = Modifier.fillMaxWidth().height(4.dp).padding(horizontal = 16.dp),
-            color = categoryColor(state.activeCategory), trackColor = SurfaceVariant
+            color = categoryColor(state.activeCategory), trackColor = TC.cardAlt
         )
 
         // Card content
@@ -205,9 +210,9 @@ private fun LearnPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(card.icon, fontSize = 40.sp, modifier = Modifier.align(Alignment.CenterHorizontally))
-            Text(card.title, color = TC.text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Text(card.body, color = TC.muted, fontSize = 14.sp, lineHeight = 20.sp)
-            card.swap?.let { swap ->
+            Text(card.localizedTitle(s.code), color = TC.text, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(card.localizedBody(s.code), color = TC.muted, fontSize = 14.sp, lineHeight = 20.sp)
+            card.localizedSwap(s.code)?.let { swap ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -233,7 +238,7 @@ private fun LearnPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
                     onClick = { viewModel.prevCard() },
                     modifier = Modifier.weight(1f),
                     border = androidx.compose.foundation.BorderStroke(1.dp, Gold.copy(alpha = 0.4f))
-                ) { Text("← Back", color = Gold) }
+                ) { Text(s.nutritionBack, color = Gold) }
             } else {
                 Spacer(Modifier.weight(1f))
             }
@@ -244,7 +249,7 @@ private fun LearnPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    if (isLast) "Take Quiz →" else "Next →",
+                    if (isLast) s.nutritionTakeQuiz else s.nutritionNextCard,
                     color = NightBlue, fontWeight = FontWeight.Bold
                 )
             }
@@ -256,6 +261,7 @@ private fun LearnPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
 
 @Composable
 private fun QuizPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
+    val s = LocalStrings.current
     val quizzes = quizzesForCategory(state.activeCategory)
     val quiz = quizzes.getOrNull(state.quizIndex) ?: return
     val isLast = state.quizIndex == quizzes.size - 1
@@ -270,7 +276,7 @@ private fun QuizPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
                 Text("‹", color = Gold, fontSize = 20.sp)
             }
             Spacer(Modifier.weight(1f))
-            Text("Quiz ${state.quizIndex + 1} of ${quizzes.size}", color = TC.muted, fontSize = 13.sp)
+            Text(s.nutritionQuizIndex(state.quizIndex + 1, quizzes.size), color = TC.muted, fontSize = 13.sp)
             Spacer(Modifier.weight(1f))
             Text("⚡ +${state.quizNurEarned}", color = Gold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
@@ -278,7 +284,7 @@ private fun QuizPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
         LinearProgressIndicator(
             progress = { ((state.quizIndex + 1).toFloat() / quizzes.size).coerceIn(0f, 1f) },
             modifier = Modifier.fillMaxWidth().height(4.dp).padding(horizontal = 16.dp),
-            color = Gold, trackColor = SurfaceVariant
+            color = Gold, trackColor = TC.cardAlt
         )
 
         Column(
@@ -288,15 +294,15 @@ private fun QuizPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(quiz.question, color = TC.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            Text(quiz.localizedQuestion(s.code), color = TC.text, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
 
             quiz.options.forEachIndexed { idx, option ->
                 val bgColor = when {
-                    selected == null -> SurfaceVariant
+                    selected == null -> TC.cardAlt
                     idx == selected && option.correct -> SageGreen.copy(alpha = 0.2f)
                     idx == selected && !option.correct -> TerracottaRed.copy(alpha = 0.2f)
                     option.correct && selected != null -> SageGreen.copy(alpha = 0.1f)
-                    else -> SurfaceVariant
+                    else -> TC.cardAlt
                 }
                 val borderColor = when {
                     selected == null -> Color.Transparent
@@ -326,7 +332,7 @@ private fun QuizPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
                                 .wrapContentSize()
                         )
                         Spacer(Modifier.width(12.dp))
-                        Text(option.text, color = TC.text, fontSize = 15.sp, modifier = Modifier.weight(1f))
+                        Text(option.localizedText(s.code), color = TC.text, fontSize = 15.sp, modifier = Modifier.weight(1f))
                         if (selected != null) {
                             Text(if (option.correct) "✓" else if (idx == selected) "✗" else "", fontSize = 16.sp)
                         }
@@ -343,7 +349,7 @@ private fun QuizPhase(state: NutritionUiState, viewModel: NutritionViewModel) {
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    if (isLast) "Complete ✓" else "Next Quiz →",
+                    if (isLast) s.nutritionComplete else s.nutritionNextQuiz,
                     color = NightBlue, fontWeight = FontWeight.Bold
                 )
             }
