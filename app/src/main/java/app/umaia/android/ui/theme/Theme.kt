@@ -48,7 +48,9 @@ val UmaiaDarkColors = darkColorScheme(
     surfaceVariant    = SurfaceVariant,
     onSurfaceVariant  = ParchmentDark,
     secondary         = GoldLight,
-    tertiary          = OraclePurple
+    // Lighter purple on dark navy bg for better contrast (~7:1).
+    // Light theme keeps OraclePurple (~6.8:1 on cream).
+    tertiary          = OracleLight
 )
 
 val UmaiaLightColors = lightColorScheme(

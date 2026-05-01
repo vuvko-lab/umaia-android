@@ -107,7 +107,7 @@ private fun QuestionPane(
         ) {
             if (canGoBack) {
                 TextButton(onClick = { viewModel.goBack() }) {
-                    Text("‹", color = OracleLight, fontSize = 18.sp)
+                    Text("‹", color = MaterialTheme.colorScheme.tertiary, fontSize = 18.sp)
                 }
             } else {
                 Spacer(Modifier.width(48.dp))
@@ -134,7 +134,7 @@ private fun QuestionPane(
             Text("🔮", fontSize = 52.sp)
             Text(
                 question.localizedOracleText(s.code),
-                color = OracleLight.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f),
                 fontSize = 13.sp, fontStyle = FontStyle.Italic,
                 textAlign = TextAlign.Center, lineHeight = 18.sp
             )
@@ -345,12 +345,12 @@ private fun ResultsView(
             Spacer(Modifier.height(10.dp))
             Text(
                 s.oracleSeerRevealed,
-                color = OracleLight.copy(alpha = 0.7f),
+                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.7f),
                 fontSize = 11.sp, fontWeight = FontWeight.Medium,
                 letterSpacing = 1.sp
             )
             Spacer(Modifier.height(4.dp))
-            Text(tribalRoleTitleLocal(result.tribalRole, s.code), color = OracleLight, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+            Text(tribalRoleTitleLocal(result.tribalRole, s.code), color = MaterialTheme.colorScheme.tertiary, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text(
                 tribalRoleDescriptionLocal(result.tribalRole, s.code),
@@ -534,7 +534,7 @@ private fun FactorRow(factor: RiskFactor, isPositive: Boolean) {
 private fun DeficiencyRow(def: DeficiencyRisk) {
     val s = LocalStrings.current
     Column(modifier = Modifier.padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(def.nutrient, color = OracleLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text(def.nutrient, color = MaterialTheme.colorScheme.tertiary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Text(def.description, color = TC.muted, fontSize = 11.sp, lineHeight = 15.sp)
         Row(verticalAlignment = Alignment.Top) {
             Text("🍴 ", fontSize = 10.sp)
