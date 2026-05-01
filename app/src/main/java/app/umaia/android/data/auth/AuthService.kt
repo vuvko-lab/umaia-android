@@ -32,7 +32,11 @@ sealed class AuthResult {
 class AuthService @Inject constructor(
     val tokenStorage: EncryptedTokenStorage,
     @Named("supabaseUrl") private val supabaseUrl: String,
-    @Named("supabaseAnonKey") private val anonKey: String
+    @Named("supabaseAnonKey") private val anonKey: String,
+    /** `dagger.Lazy` to break the construction cycle:
+     *  AuthService ← PostgrestClient ← SupabaseProfileRepository. We only
+     *  need the repo at sign-out time, so deferring init is free. */
+    private val profileRepository: dagger.Lazy<app.umaia.android.domain.repository.ProfileRepository>,
 ) {
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
@@ -81,6 +85,9 @@ class AuthService @Inject constructor(
         runCatching { post("/auth/v1/logout", emptyMap()) }
         tokenStorage.clear()
         refreshJob?.cancel()
+        // Drop the cached profile so the next sign-in's CompanyGate decides
+        // routing on fresh data instead of the prior user's profile.
+        profileRepository.get().clearCache()
         _authState.value = AuthState.Unauthenticated
     }
 
@@ -94,6 +101,7 @@ class AuthService @Inject constructor(
         post("/rest/v1/rpc/delete_own_account", emptyMap())
         tokenStorage.clear()
         refreshJob?.cancel()
+        profileRepository.get().clearCache()
         _authState.value = AuthState.Unauthenticated
     }
 

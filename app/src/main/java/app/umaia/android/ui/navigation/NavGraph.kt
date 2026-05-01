@@ -81,6 +81,7 @@ fun NavGraph(
             composable(Screen.CompanyGate.route) {
                 CompanyGateRoute(
                     gamePrefs = gamePrefs,
+                    authService = authViewModel.authService,
                     profileViewModel = profileViewModel,
                     onShowCompanyCode = {
                         navController.navigate(Screen.CompanyCode.route) {
@@ -98,8 +99,18 @@ fun NavGraph(
             composable(Screen.CompanyCode.route) {
                 CompanyCodeScreen(
                     onDone = {
-                        navController.navigate(Screen.Steps.route) {
-                            popUpTo(Screen.CompanyCode.route) { inclusive = true }
+                        // First-time gate (came from CompanyGate or Login —
+                        // those got popped, so previous is empty / outside
+                        // BOTTOM_NAV) → forward to Steps. In-app cohort
+                        // change (came from Profile) → pop back to Profile.
+                        val cameFromProfile =
+                            navController.previousBackStackEntry?.destination?.route == Screen.Profile.route
+                        if (cameFromProfile) {
+                            navController.popBackStack()
+                        } else {
+                            navController.navigate(Screen.Steps.route) {
+                                popUpTo(Screen.CompanyCode.route) { inclusive = true }
+                            }
                         }
                     }
                 )
@@ -115,7 +126,11 @@ fun NavGraph(
                 })
             }
 
-            composable(Screen.Profile.route) { ProfileScreen() }
+            composable(Screen.Profile.route) {
+                ProfileScreen(
+                    onChangeCohort = { navController.navigate(Screen.CompanyCode.route) }
+                )
+            }
         }
     }
 
@@ -144,6 +159,7 @@ fun NavGraph(
 @Composable
 private fun CompanyGateRoute(
     gamePrefs: GamePreferences,
+    authService: app.umaia.android.data.auth.AuthService,
     profileViewModel: app.umaia.android.ui.screens.profile.ProfileViewModel,
     onShowCompanyCode: () -> Unit,
     onShowSteps: () -> Unit
@@ -153,6 +169,14 @@ private fun CompanyGateRoute(
 
     LaunchedEffect(state.profile) {
         val p = state.profile ?: return@LaunchedEffect
+        // Defence in depth: if `state.profile` is for a different user than
+        // the currently-authenticated one (a stale cache from before
+        // sign-out — the root cause is now fixed in AuthService.signOut()
+        // calling profileRepository.clearCache(), but we keep the guard so
+        // any future leak of the same shape can't misroute), wait for the
+        // freshly-loaded profile and ignore this emission.
+        val authUid = authService.currentUserId ?: return@LaunchedEffect
+        if (p.userId != authUid) return@LaunchedEffect
         // Already in a cohort, OR user has explicitly skipped — go to Steps.
         if (p.companyCode != null || gamePrefs.isCompanyChoiceMade(p.userId)) {
             onShowSteps()

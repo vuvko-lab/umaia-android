@@ -12,6 +12,14 @@ interface LoginRepository {
 interface ProfileRepository {
     fun observeProfile(): Flow<UserProfile?>
     suspend fun getProfile(): UserProfile
+
+    /** Drops any cached profile state so a subsequent sign-in starts clean.
+     *  Called from `AuthService.signOut` and `AuthService.deleteAccount` —
+     *  without this, the singleton's `_profileFlow` would hand the prior
+     *  user's profile to every observer of the new session, misrouting
+     *  the CompanyGate (which decides Steps-vs-CompanyCode based on
+     *  `profile.companyCode`) on the first post-sign-in render. */
+    fun clearCache()
     suspend fun updateProfile(fullName: String?, city: String?, gender: String?, age: Int?)
     suspend fun completeOnboarding(tribalRole: String)
     suspend fun incrementAppOpen(): Int

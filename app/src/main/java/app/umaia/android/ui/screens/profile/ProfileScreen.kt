@@ -34,7 +34,8 @@ import java.util.Calendar
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    viewModel: ProfileViewModel = hiltViewModel()
+    viewModel: ProfileViewModel = hiltViewModel(),
+    onChangeCohort: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
@@ -98,6 +99,39 @@ fun ProfileScreen(
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f)
                     )
+                    Text("›", color = TC.muted, fontSize = 18.sp)
+                }
+            }
+
+            // Change cohort. Reuses the existing Screen.CompanyCode flow —
+            // CompanyCodeViewModel.submit() already calls
+            // profileRepository.setCompanyCode(code) which is an UPSERT-style
+            // RPC, so passing a different code re-binds to the new company.
+            // NavGraph distinguishes "from Profile" via previousBackStackEntry
+            // and pops back here on success instead of forwarding to Steps.
+            Surface(
+                onClick = onChangeCohort,
+                shape = RoundedCornerShape(14.dp),
+                color = TC.card,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(14.dp)
+                ) {
+                    Text("🏷️", fontSize = 18.sp)
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        sLocal.changeCohort,
+                        color = TC.text,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    state.profile?.companyName?.let { c ->
+                        Text(c, color = TC.muted, fontSize = 12.sp)
+                        Spacer(Modifier.width(8.dp))
+                    }
                     Text("›", color = TC.muted, fontSize = 18.sp)
                 }
             }

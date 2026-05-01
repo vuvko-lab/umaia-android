@@ -15,6 +15,10 @@ class SupabaseProfileRepository @Inject constructor(private val db: PostgrestCli
 
     override fun observeProfile(): Flow<UserProfile?> = _profileFlow.asStateFlow()
 
+    override fun clearCache() {
+        _profileFlow.value = null
+    }
+
     override suspend fun getProfile(): UserProfile {
         val uid = db.userId
 

@@ -20,7 +20,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authService: AuthService,
+    /** Exposed (not private) so NavGraph's CompanyGateRoute can read
+     *  `currentUserId` for the stale-profile defensive guard. */
+    val authService: AuthService,
     private val analytics: AnalyticsService
 ) : ViewModel() {
 

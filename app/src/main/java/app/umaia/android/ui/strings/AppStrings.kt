@@ -287,6 +287,9 @@ data class AppStrings(
     val earnMoreTakeTest: String,
     val wisdomTestEntry: String,
 
+    /** Profile screen — entry point to change company/cohort. */
+    val changeCohort: String,
+
     // ── Nutrition screen chrome (v1.5.x light-theme + i18n pass) ──────────────
     val nutritionMenuTitle: String,
     val nutritionMenuSubtitle: String,
@@ -576,6 +579,7 @@ Now you are part of this movement. Your motion is not just exercise. It is the s
     earnMoreBeyondCap = "Walk as much as you can today",
     earnMoreTakeTest = "Take a wisdom test (+8–10 Nur)",
     wisdomTestEntry = "Wisdom tests",
+    changeCohort = "Change cohort",
     nutritionMenuTitle = "Wisdom of the Steppe",
     nutritionMenuSubtitle = "Ancient knowledge, proven by the healers of the tribe",
     nutritionMenuQuote = "\"A nomad who knows what to eat survives the harshest winter. A nomad who knows what to avoid protects the whole tribe.\"",
@@ -867,6 +871,7 @@ val RuStrings = AppStrings(
     earnMoreBeyondCap = "Пройди сегодня как можно больше",
     earnMoreTakeTest = "Пройди тест мудрости (+8–10 Нур)",
     wisdomTestEntry = "Тесты мудрости",
+    changeCohort = "Сменить когорту",
     nutritionMenuTitle = "Мудрость Степи",
     nutritionMenuSubtitle = "Древнее знание, проверенное целителями племени",
     nutritionMenuQuote = "«Кочевник, знающий, что есть, переживёт самую суровую зиму. Кочевник, знающий, чего избегать, защитит всё племя.»",
@@ -1151,6 +1156,7 @@ val KkStrings = AppStrings(
     earnMoreBeyondCap = "Бүгін мүмкіндігінше көп жүр",
     earnMoreTakeTest = "Даналық тестін тапсыр (+8–10 Нұр)",
     wisdomTestEntry = "Даналық тестілері",
+    changeCohort = "Когортаны ауыстыру",
     nutritionMenuTitle = "Дала Даналығы",
     nutritionMenuSubtitle = "Тайпа емшілерімен дәлелденген ежелгі білім",
     nutritionMenuQuote = "«Не жейтінін білетін көшпенді ең қатал қысты бастан өткізеді. Неден аулақ болуды білетін көшпенді бүкіл тайпаны қорғайды.»",
